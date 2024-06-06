@@ -24,6 +24,9 @@ video_length = 100
 num_envs = 4
 env = GridWorldEnv(size=5)
 env = FlattenObservation(env)
+# obs, info = env.reset()
+# print("Observation: ", obs)
+
 model = DQN("MlpPolicy", env, verbose=1)
 # observation, info = env.reset()
 total_timesteps = 20_000
@@ -31,7 +34,7 @@ model.learn(total_timesteps=total_timesteps)
 env.close()
 
 images = []
-test_env = GridWorldEnv(render_mode="human", size=5)
+test_env = GridWorldEnv(render_mode="human", size=15)
 test_env = FlattenObservation(test_env)
 # test_ennv = DummyVecEnv(test_env)
 obs, info = test_env.reset()
