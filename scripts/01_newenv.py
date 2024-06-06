@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-import os
+import os, sys
 from stable_baselines3 import PPO, DQN, A2C
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
@@ -14,6 +14,8 @@ import imageio
 from pathlib import Path
 
 # custom env
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(current_dir))
 from envs.grid_world import GridWorldEnv
 from envs.coverage_grid_env import CoverageGridEnv
 
