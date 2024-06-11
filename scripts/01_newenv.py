@@ -45,10 +45,10 @@ print("Observation: ", obs)
 
 # Train agent
 policy_kwargs = {"normalize_images": False}
-model = PPO("MlpPolicy", env, verbose=1)
-total_timesteps = 20_000
+model = A2C("MlpPolicy", env, verbose=1)
+total_timesteps = 100_000
 model.learn(total_timesteps=total_timesteps)
-model.save(str(model_folder/"CoverageEnvDict_PPO"))
+model.save(str(model_folder/"CoverageEnvDict_A2C"))
 env.close()
 
 

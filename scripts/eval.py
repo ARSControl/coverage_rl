@@ -20,7 +20,7 @@ video_length = 100
 
 env = ContinuousEnvDict(render_mode="human", local_vis=False)
 env = FlattenObservation(env)
-model = A2C.load(str(model_folder/"CoverageEnv_A2C_v4"))
+model = A2C.load(str(model_folder/"CoverageEnvDict_A2C"))
 obs, info = env.reset()
 
 alpha = 0.5
