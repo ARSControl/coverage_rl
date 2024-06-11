@@ -20,13 +20,15 @@ def gauss_pdf(x, y, mean, covariance):
 
 
 
-class ContinuousEnv(gym.Env):
+class ContinuousEnvDict(gym.Env):
     metadata =  {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, robot_range=3, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
+    def __init__(self, robot_range=3, obstacles_num=2, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
         self.size = size
         self.window_size = 512
         self.sensing_range = robot_range
+        self.obstacles_num = obstacles_num
+        print("Number of obstacles. ", self.obstacles_num)
         self.width = width
         self.local_vis = local_vis
         self.discretize_precision = width / size
@@ -40,10 +42,16 @@ class ContinuousEnv(gym.Env):
         # Observations space: robot's position
         # self.observation_space = spaces.Box(low=0.0, high=self.size-1, shape=(2,), dtype=np.float32)
 
-        # Observation space: R cells around the robot (--> shape = R+1)
-        self.observation_space = spaces.Box(low=0, high=1,
-                                            shape=(obs_shape, obs_shape),
-                                            dtype=np.float32)
+        # Observation space: obstacle + sensing area
+        self.observation_space = spaces.Dict(
+            {
+                "sensing": spaces.Box(low=0, high=1,
+                                                shape=(obs_shape, obs_shape),
+                                                dtype=np.float32),
+                "obstacles": spaces.Box(low=0, high=width-1, shape=(2, self.obstacles_num), dtype=np.float32),
+                "agent": spaces.Box(low=0, high=width-1, shape=(2,), dtype=np.float32)
+            }
+        )
 
         # ACtion space: x and y direction in range [-1, 1]
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
@@ -81,6 +89,8 @@ class ContinuousEnv(gym.Env):
         if pad_j > 0:
             obs = np.concatenate((np.zeros((obs.shape[0], pad_j)), obs), 1)
 
+        dict_obs = {"sensing": obs, "obstacles": self.obstacles, "agent": self._robot_position}
+
 
         # print("Obs shape: ", obs.shape)
         
@@ -88,7 +98,7 @@ class ContinuousEnv(gym.Env):
 
         # print("Obs shape: ", obs.shape)
 
-        return obs
+        return dict_obs
         # return np.expand_dims(obs, 0)
 
     def _get_info(self):
@@ -96,7 +106,7 @@ class ContinuousEnv(gym.Env):
             "distance": np.linalg.norm(self._robot_position - self._mean_pt)
         }
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.t = 0
 
@@ -105,7 +115,7 @@ class ContinuousEnv(gym.Env):
         # self._robot_position = np.array([1.0, 1.0])
         self._mean_pt = self.width * np.random.rand(2)
         # self._mean_pt = np.array([8.0, 2.0])
-        self.obstacle = self.width * np.random.rand(2)
+        self.obstacles = self.width * np.random.rand(2, self.obstacles_num)
 
 
         # define prob values of the grid
@@ -139,8 +149,11 @@ class ContinuousEnv(gym.Env):
         # self._robot_position = np.clip(self._robot_position + action, 0, self.size - 1)
         self._robot_position += action
         self.t += 1
-        d_obs = np.linalg.norm(self._robot_position - self.obstacle)
-        collision_penalty = 10 - 10*d_obs if d_obs < 1.0 else 0
+        collision_penalty = 0.0
+        for i in range(self.obstacles_num):
+            d_obs = np.linalg.norm(self._robot_position - self.obstacles[:, i])
+            penalty_i = 10 - 10*d_obs if d_obs < 1.0 else 0
+            collision_penalty += penalty_i
 
         # episode is done iff the agent has reached the target
         terminated = np.linalg.norm(self._robot_position - self._mean_pt) < self.CONVERGENCE_TOLERANCE
@@ -149,7 +162,7 @@ class ContinuousEnv(gym.Env):
         xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
         observation = self._get_obs()
         # reward = np.sum(observation) - 10*self.t            # reward = sum of values in sensing range
-        reward = self.grid[self.i_start + xc, self.i_start + yc] - 0.01*self.t # - collision_penalty
+        reward = self.grid[self.i_start + xc, self.i_start + yc] - 0.01*self.t - collision_penalty
 
         info = self._get_info()
 
@@ -235,13 +248,14 @@ class ContinuousEnv(gym.Env):
             pix_square_size / 3 * 5,
         )
 
-        # draw obstacle
-        pygame.draw.circle(
-            canvas,
-            (255, 0, 0),
-            self.obstacle * pix_square_size / self.discretize_precision,
-            pix_square_size / 3 * 5,
-        )
+        # draw obstacles
+        for i in range(self.obstacles_num):
+            pygame.draw.circle(
+                canvas,
+                (255, 0, 0),
+                self.obstacles[:, i] * pix_square_size / self.discretize_precision,
+                pix_square_size / 3 * 5,
+            )
 
 
         if self.render_mode == "human":
