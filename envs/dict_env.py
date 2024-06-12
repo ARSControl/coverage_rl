@@ -36,6 +36,7 @@ class ContinuousEnvDict(gym.Env):
         obs_shape = int(2*self.sensing_range/self.discretize_precision)
         self.obs_shape = obs_shape
         self.CONVERGENCE_TOLERANCE = 0.2
+        self.dt = 0.2
         
         print("Discretize precision: ", self.discretize_precision)
         print("Shape: ", obs_shape)
@@ -147,7 +148,7 @@ class ContinuousEnvDict(gym.Env):
     def step(self, action):
         # update robot position
         # self._robot_position = np.clip(self._robot_position + action, 0, self.size - 1)
-        self._robot_position += action
+        self._robot_position += action*self.dt
         self.t += 1
         collision_penalty = 0.0
         for i in range(self.obstacles_num):
@@ -162,7 +163,7 @@ class ContinuousEnvDict(gym.Env):
         xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
         observation = self._get_obs()
         # reward = np.sum(observation) - 10*self.t            # reward = sum of values in sensing range
-        reward = self.grid[self.i_start + xc, self.i_start + yc] - 0.01*self.t - collision_penalty
+        reward = self.grid[self.i_start + xc, self.i_start + yc] - 0.002*self.t - collision_penalty
 
         info = self._get_info()
 
