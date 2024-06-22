@@ -10,6 +10,7 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
 from stable_baselines3.common.vec_env import VecVideoRecorder, DummyVecEnv
+from stable_baselines3.common.callbacks import CheckpointCallback
 import imageio
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -22,6 +23,8 @@ from envs.grid_world import GridWorldEnv
 from envs.coverage_grid_env import CoverageGridEnv
 from envs.cont_env import ContinuousEnv
 from envs.dict_env import ContinuousEnvDict
+from envs.cooperative_env import CooperativeEnv
+from envs.multi_env import MultiEnv
 
 path = Path().resolve()
 video_folder = str(path/"videos")
@@ -31,9 +34,9 @@ video_length = 100
 
 # Create env
 num_envs = 4
-env = ContinuousEnvDict()
-# env = make_vec_env(env, n_envs=num_envs)
-env = FlattenObservation(env)
+env = MultiEnv()
+# env = make_vec_env(CooperativeEnv, n_envs=num_envs)
+# env = FlattenObservation(env)
 print("Action space shape: ", env.action_space)
 print("Observation space shape: ", env.observation_space)
 
@@ -42,18 +45,27 @@ obs, info = env.reset()
 print("Obs shape: ", obs.shape)
 print("Observation: ", obs)
 
+# Save a checkpoint every 10000 steps
+checkpoint_callback = CheckpointCallback(
+  save_freq=10000,
+  save_path=str(model_folder),
+  name_prefix="temp",
+  save_replay_buffer=True,
+  save_vecnormalize=True,
+)
+
 
 # Train agent
 policy_kwargs = {"normalize_images": False}
 model = A2C("MlpPolicy", env, verbose=1)
-total_timesteps = 100_000
-model.learn(total_timesteps=total_timesteps)
-model.save(str(model_folder/"CoverageEnvDict_A2C"))
+total_timesteps = 1_000_000
+model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
+model.save(str(model_folder/"MultiEnv_A2C"))
 env.close()
 
 
-env = ContinuousEnvDict(render_mode="human")
-env = FlattenObservation(env)
+env = CooperativeEnv(render_mode="human")
+# env = FlattenObservation(env)
 obs, info = env.reset()
 
 
