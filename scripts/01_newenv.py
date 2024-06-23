@@ -11,7 +11,7 @@ import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
 from stable_baselines3.common.vec_env import VecVideoRecorder, DummyVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback
-import imageio
+# import imageio
 from pathlib import Path
 import matplotlib.pyplot as plt
 
@@ -23,7 +23,7 @@ from envs.grid_world import GridWorldEnv
 from envs.coverage_grid_env import CoverageGridEnv
 from envs.cont_env import ContinuousEnv
 from envs.dict_env import ContinuousEnvDict
-from envs.cooperative_env import CooperativeEnv
+# from envs.cooperative_env import CooperativeEnv
 from envs.multi_env import MultiEnv
 
 path = Path().resolve()
@@ -47,7 +47,7 @@ print("Observation: ", obs)
 
 # Save a checkpoint every 10000 steps
 checkpoint_callback = CheckpointCallback(
-  save_freq=10000,
+  save_freq=100000,
   save_path=str(model_folder),
   name_prefix="temp",
   save_replay_buffer=True,
@@ -58,7 +58,7 @@ checkpoint_callback = CheckpointCallback(
 # Train agent
 policy_kwargs = {"normalize_images": False}
 model = A2C("MlpPolicy", env, verbose=1)
-total_timesteps = 1_000_000
+total_timesteps = 3_000_000
 model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
 model.save(str(model_folder/"MultiEnv_A2C"))
 env.close()
