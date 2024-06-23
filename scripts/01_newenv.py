@@ -64,15 +64,16 @@ model.save(str(model_folder/"MultiEnv_A2C"))
 env.close()
 
 
-env = CooperativeEnv(render_mode="human")
+
+env = MultiEnv(render_mode="human", local_vis=False)
 # env = FlattenObservation(env)
 obs, info = env.reset()
 
 
 for i in range(video_length+1):
-    # action = env.action_space.sample()
-    action, _ = model.predict(obs)
-    obs, reward, terminated, truncated, info = env.step(action)
+    actions = env.action_space.sample()
+    # action, _ = model.predict(obs)
+    obs, reward, terminated, truncated, info = env.step(actions)
     print("Reward: ", reward)
     env.render()
     if terminated or truncated:

@@ -87,7 +87,7 @@ class MultiEnv(gym.Env):
         self.observation_space = spaces.Box(low=0.0, high=self.size, shape=(self.robots_num, 2), dtype=np.float32)
 
         # ACtion space: x and y direction in range [-1, 1]
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.robots_num, 2), dtype=np.float32)
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -194,8 +194,8 @@ class MultiEnv(gym.Env):
         x, y = self._robot_position             # [meters]
         '''
         self.t += 1
-        for i in range(len(actions)):
-            self._robots_positions[i] = np.clip(self._robots_positions[i] + actions[i]*self.dt, 0, self.size)
+        for i in range(actions.shape[0]):
+            self._robots_positions[i] = np.clip(self._robots_positions[i] + actions[i, :]*self.dt, 0, self.size)
 
 
 
