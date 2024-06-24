@@ -36,7 +36,7 @@ video_length = 100
 num_envs = 4
 env = MultiEnv()
 # env = make_vec_env(CooperativeEnv, n_envs=num_envs)
-# env = FlattenObservation(env)
+env = FlattenObservation(env)
 print("Action space shape: ", env.action_space)
 print("Observation space shape: ", env.observation_space)
 
