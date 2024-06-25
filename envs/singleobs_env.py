@@ -256,12 +256,12 @@ class SingleObsEnv(gym.Env):
                     if lim_region.contains(x_pt):
                         reward += self.grid[self.i_start+i, self.i_start+j]
 
+        reward -= self.t
         for x_j in self._mates_positions:
             d = np.linalg.norm(self._robot_position - x_j)
             if d < 2.0:
-                collision_penalty = 50 - 25*d
+                reward -= 50 - 25*d
 
-        reward -= self.t + collision_penalty
 
         # dist = np.linalg.norm(centr - x_ij)
         # print("Distance to centroid: ", dist)
