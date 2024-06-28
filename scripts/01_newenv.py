@@ -25,6 +25,9 @@ from envs.cont_env import ContinuousEnv
 from envs.dict_env import ContinuousEnvDict
 # from envs.cooperative_env import CooperativeEnv
 from envs.multi_env import MultiEnv
+from envs.multiobs_env import MultiObsEnv
+from envs.singleobs_env import SingleObsEnv
+from envs.grid_mates_env import GridMatesEnv
 
 path = Path().resolve()
 video_folder = str(path/"videos")
@@ -34,7 +37,7 @@ video_length = 100
 
 # Create env
 num_envs = 4
-env = MultiEnv()
+env = GridMatesEnv()
 # env = make_vec_env(CooperativeEnv, n_envs=num_envs)
 env = FlattenObservation(env)
 print("Action space shape: ", env.action_space)
@@ -47,7 +50,7 @@ print("Observation: ", obs)
 
 # Save a checkpoint every 10000 steps
 checkpoint_callback = CheckpointCallback(
-  save_freq=100000,
+  save_freq=50000,
   save_path=str(model_folder),
   name_prefix="temp",
   save_replay_buffer=True,
@@ -65,7 +68,7 @@ env.close()
 
 
 
-env = MultiEnv(render_mode="human", local_vis=False)
+env = SingleObsEnv(render_mode="human", local_vis=False)
 # env = FlattenObservation(env)
 obs, info = env.reset()
 
