@@ -28,6 +28,7 @@ from envs.multi_env import MultiEnv
 from envs.multiobs_env import MultiObsEnv
 from envs.singleobs_env import SingleObsEnv
 from envs.grid_mates_env import GridMatesEnv
+from envs.centroid_env import CentroidEnv
 
 path = Path().resolve()
 video_folder = str(path/"videos")
@@ -37,15 +38,15 @@ video_length = 100
 
 # Create env
 num_envs = 4
-env = GridMatesEnv()
+env = CentroidEnv()
 # env = make_vec_env(CooperativeEnv, n_envs=num_envs)
-env = FlattenObservation(env)
+# env = FlattenObservation(env)
 print("Action space shape: ", env.action_space)
 print("Observation space shape: ", env.observation_space)
 
 
 obs, info = env.reset()
-print("Obs shape: ", obs.shape)
+# print("Obs shape: ", obs.shape)
 print("Observation: ", obs)
 
 # Save a checkpoint every 10000 steps
@@ -53,14 +54,14 @@ checkpoint_callback = CheckpointCallback(
   save_freq=50000,
   save_path=str(model_folder),
   name_prefix="temp",
-  save_replay_buffer=True,
-  save_vecnormalize=True,
+  save_replay_buffer=False,
+  save_vecnormalize=False,
 )
 
 
 # Train agent
 policy_kwargs = {"normalize_images": False}
-model = A2C("MlpPolicy", env, verbose=1)
+model = PPO("MultiInputPolicy", env, verbose=1, policy_kwargs=policy_kwargs)
 total_timesteps = 3_000_000
 model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
 model.save(str(model_folder/"MultiEnv_A2C"))
