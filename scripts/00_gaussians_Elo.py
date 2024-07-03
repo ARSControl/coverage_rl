@@ -10,11 +10,14 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
 from stable_baselines3.common.vec_env import VecVideoRecorder, DummyVecEnv
-import imageio
+# import imageio
 from pathlib import Path
 
 # custom env
-from envs.grid_world_gaussians import GridWorldEnv
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(current_dir))
+from envs.grid_world_gaussians_Elo import GridWorldEnv
+
 
 path = Path().resolve()
 video_folder = str(path/"videos")
