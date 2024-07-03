@@ -11,6 +11,7 @@ import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
 from stable_baselines3.common.vec_env import VecVideoRecorder, DummyVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common import preprocessing
 # import imageio
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -38,12 +39,15 @@ video_length = 100
 
 # Create env
 num_envs = 4
-env = CentroidEnv()
-# env = make_vec_env(CooperativeEnv, n_envs=num_envs)
+# env = CentroidEnv()
+env = make_vec_env(CentroidEnv, n_envs=num_envs)
 # env = FlattenObservation(env)
 print("Action space shape: ", env.action_space)
-print("Observation space shape: ", env.observation_space)
-
+print("Observation space: ", env.observation_space.items())
+for key, subspace in env.observation_space.spaces.items():
+  print("Key: ", key)
+  print("Subspace. ", subspace)
+  print("Image? ", preprocessing.is_image_space(subspace))
 
 obs, info = env.reset()
 # print("Obs shape: ", obs.shape)
@@ -61,7 +65,8 @@ checkpoint_callback = CheckpointCallback(
 
 # Train agent
 policy_kwargs = {"normalize_images": False}
-model = PPO("MultiInputPolicy", env, verbose=1, policy_kwargs=policy_kwargs)
+model = PPO("MultiInputPolicy", env, verbose=1)
+print("Model:" , model)
 total_timesteps = 3_000_000
 model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
 model.save(str(model_folder/"MultiEnv_A2C"))

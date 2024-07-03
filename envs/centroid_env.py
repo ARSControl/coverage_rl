@@ -74,7 +74,7 @@ class CentroidEnv(gym.Env):
         # self.observation_space = spaces.Box(low=0.0, high=self.size-1, shape=(2,), dtype=np.float32)
 
 
-        grid_obs = spaces.Box(low=0.0, high=1.0, shape=(self.obs_shape, self.obs_shape), dtype=np.float32)
+        grid_obs = spaces.Box(low=0, high=255, shape=(1, self.obs_shape, self.obs_shape), dtype=np.uint8)
         mates_obs = spaces.Box(low=-self.width, high=self.width, shape=(self.robots_num-1, 2), dtype=np.float32)
         self.observation_space = spaces.Dict({"grid": grid_obs, "mates": mates_obs})
 
@@ -115,11 +115,13 @@ class CentroidEnv(gym.Env):
         if pad_j > 0:
             obs = np.concatenate((np.zeros((obs.shape[0], pad_j)), obs), 1)
 
+        norm_obs = (255*obs).astype(int)
+
         
         
         mates = [self._mates_positions[i] - self._robot_position for i in range(self.robots_num-1)]
 
-        dict_obs = {"grid": obs, "mates": mates}
+        dict_obs = {"grid": np.expand_dims(norm_obs, 0), "mates": mates}
         return dict_obs
         # return np.expand_dims(obs, 0)
         
@@ -141,6 +143,7 @@ class CentroidEnv(gym.Env):
         self._robot_position = 1 + (self.width-2) * np.random.rand(2)
         self._mean_pt = 1 + (self.width-2) * np.random.rand(2)
         self._mates_positions = []
+        self.centroid = np.zeros((2,))
         for i in range(self.mates_num):
             ready = False
             while not ready:
@@ -164,6 +167,9 @@ class CentroidEnv(gym.Env):
         # Normalize values
         # self.grid -= self.grid.min()
         self.grid /= self.grid.max()
+
+        # Set in range [0, 255]
+        # self.grid = (255*self.grid).astype(int)
 
         # set values outside env to -1
         # self.grid[:self.i_start, :] = -1.0
@@ -285,7 +291,10 @@ class CentroidEnv(gym.Env):
         centr = np.array([Cx, Cy])
         
         dist = np.linalg.norm(x_ij - centr)
+        # print("Distance to centroid: ", dist)
         reward = -dist
+
+        self.centroid = centr
 
         # reward -= self.t
         # for x_j in self._mates_positions:
@@ -399,6 +408,14 @@ class CentroidEnv(gym.Env):
             canvas,
             (0, 0, 255),
             self._mean_pt * pix_square_size / self.discretize_precision,
+            pix_square_size / 3 * 5,
+        )
+
+        # Draw centroid
+        pygame.draw.circle(
+            canvas,
+            (255, 0, 0),
+            self.centroid * pix_square_size / self.discretize_precision,
             pix_square_size / 3 * 5,
         )
 
