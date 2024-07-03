@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-import os
+import os, sys
 from stable_baselines3 import PPO, DQN, A2C
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
@@ -32,7 +32,7 @@ model = DQN("MlpPolicy", env, verbose=1)
 # observation, info = env.reset()
 total_timesteps = 3_000_000
 model.learn(total_timesteps=total_timesteps)
-model.save(str(model_folder/"MultiEnv_DQN"))
+model.save(str(model_folder/"MultiEnv_DQN_Elo"))
 env.close()
 
 images = []
