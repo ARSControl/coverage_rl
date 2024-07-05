@@ -50,7 +50,7 @@ def gauss_pdf(x, y, mean, covariance):
 
 
 
-class GlobalEnv(gym.Env):
+class CentroidEnv2(gym.Env):
     metadata =  {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(self, robot_range=3, robots_num=3, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
@@ -74,10 +74,9 @@ class GlobalEnv(gym.Env):
         # self.observation_space = spaces.Box(low=0.0, high=self.size-1, shape=(2,), dtype=np.float32)
 
 
-        agent_obs = spaces.Box(low=-self.width, high=self.width, shape=(1, 2), dtype=np.float32)
-        grid_obs = spaces.Box(low=0, high=255, shape=(1, self.size, self.size), dtype=np.uint8)
+        grid_obs = spaces.Box(low=0, high=255, shape=(1, self.obs_shape, self.obs_shape), dtype=np.uint8)
         mates_obs = spaces.Box(low=-self.width, high=self.width, shape=(self.robots_num-1, 2), dtype=np.float32)
-        self.observation_space = spaces.Dict({"agent": agent_obs, "grid": grid_obs, "mates": mates_obs})
+        self.observation_space = spaces.Dict({"grid": grid_obs, "mates": mates_obs})
 
         # ACtion space: x and y direction in range [-1, 1]
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
@@ -92,7 +91,6 @@ class GlobalEnv(gym.Env):
 
     def _get_obs(self):
         
-        """
         x, y = self._robot_position
         half_obs_size = self.obs_shape // 2
 
@@ -116,17 +114,14 @@ class GlobalEnv(gym.Env):
             obs = np.concatenate((np.zeros((pad_i, obs.shape[1])), obs), 0)
         if pad_j > 0:
             obs = np.concatenate((np.zeros((obs.shape[0], pad_j)), obs), 1)
-        """
 
-        grid_obs = np.expand_dims(self.grid[self.i_start:self.i_start+self.size, self.i_start:self.i_start+self.size], 0)
-        norm_obs = (255*grid_obs).astype(int)
+        norm_obs = (255*obs).astype(int)
 
         
-        mates = np.zeros((self.robots_num-1, 2))
-        for i in range(self.robots_num-1):
-            mates[i, :] = self._mates_positions[i]
+        
+        mates = [self._mates_positions[i] - self._robot_position for i in range(self.robots_num-1)]
 
-        dict_obs = {"agent": np.expand_dims(self._robot_position, 0), "grid": norm_obs, "mates": mates}
+        dict_obs = {"grid": np.expand_dims(norm_obs, 0), "mates": mates}
         return dict_obs
         # return np.expand_dims(obs, 0)
         
@@ -172,7 +167,6 @@ class GlobalEnv(gym.Env):
         # Normalize values
         # self.grid -= self.grid.min()
         self.grid /= self.grid.max()
-
 
         # Set in range [0, 255]
         # self.grid = (255*self.grid).astype(int)
@@ -221,6 +215,10 @@ class GlobalEnv(gym.Env):
         robots[0, :] = self._robot_position
         for i in range(1, self.mates_num+1):
             robots[i, :] = self._mates_positions[i-1]
+        
+        print("Robots. ", robots)
+        
+        """
         try:
             pts = np.array(robots)
             dummy_points = np.zeros((5*self.robots_num, 2))
@@ -295,6 +293,18 @@ class GlobalEnv(gym.Env):
             Cy = Cy / A
         
         centr = np.array([Cx, Cy])
+
+        """
+        voronoi = Voronoi(robots)
+        region = voronoi.regions[0]
+        print("Regions: ", voronoi.regions)
+        if len(region) > 0 and -1 not in region:
+            vertices = voronoi.vertices[region]
+            print("vertices: ", vertices)
+            weights = np.array([self.grid[int(v[0]/self.discretize_precision)+self.i_start, int(v[1]/self.discretize_precision)+self.i_start] for v in vertices])
+            centr = np.average(vertices, weights=weights)
+        else:
+            centr = np.array([self.width/2, self.width/2])
         
         dist = np.linalg.norm(self._robot_position - centr)
         # print("Distance to centroid: ", dist)

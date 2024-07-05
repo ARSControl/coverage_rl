@@ -290,7 +290,7 @@ class CentroidEnv(gym.Env):
         
         centr = np.array([Cx, Cy])
         
-        dist = np.linalg.norm(x_ij - centr)
+        dist = np.linalg.norm(self._robot_position - centr)
         # print("Distance to centroid: ", dist)
         reward = -dist
 
