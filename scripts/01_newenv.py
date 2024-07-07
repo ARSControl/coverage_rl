@@ -30,6 +30,7 @@ from envs.multiobs_env import MultiObsEnv
 from envs.singleobs_env import SingleObsEnv
 from envs.grid_mates_env import GridMatesEnv
 from envs.centroid_env import CentroidEnv
+from envs.centroid_env2 import CentroidEnv2
 from envs.discr_env import DiscreteEnv
 from envs.global_env import GlobalEnv
 
@@ -41,9 +42,10 @@ video_length = 100
 
 # Create env
 num_envs = 4
-env = GlobalEnv()
-# env = make_vec_env(CentroidEnv, n_envs=num_envs)
+# env = CentroidEnv()
+env = make_vec_env(CentroidEnv2, n_envs=num_envs)
 # env = FlattenObservation(env)
+print("Environment: ", env)
 print("Action space shape: ", env.action_space)
 print("Observation space: ", env.observation_space.items())
 for key, subspace in env.observation_space.spaces.items():
@@ -67,16 +69,16 @@ checkpoint_callback = CheckpointCallback(
 
 # Train agent
 policy_kwargs = {"normalize_images": False}
-model = A2C("MultiInputPolicy", env, verbose=1)
+model = PPO("MultiInputPolicy", env, verbose=1)
 print("Model:" , model)
 total_timesteps = 3_000_000
 model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
-model.save(str(model_folder/"DiscreteEnv_Centroid_A2C"))
+model.save(str(model_folder/"CentroidEnv2_PPO"))
 env.close()
 
 
 
-env = SingleObsEnv(render_mode="human", local_vis=False)
+env = CentroidEnv2(render_mode="human", local_vis=False)
 # env = FlattenObservation(env)
 obs, info = env.reset()
 

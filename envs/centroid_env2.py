@@ -5,7 +5,7 @@ import gymnasium as gym
 from gymnasium import spaces
 
 from scipy.spatial import Voronoi, voronoi_plot_2d
-from shapely import Polygon, Point, intersection
+from shapely import Polygon, Point, intersection, get_coordinates
 
 
 
@@ -204,7 +204,7 @@ class CentroidEnv2(gym.Env):
         x, y = self._robot_position             # [meters]
         '''
         self.t += 1
-        self._robot_position = np.clip(self._robot_position + action*self.dt, 0, self.size)
+        self._robot_position = np.clip(self._robot_position + action*self.dt, 0.5, self.width-0.5)
 
 
 
@@ -216,9 +216,8 @@ class CentroidEnv2(gym.Env):
         for i in range(1, self.mates_num+1):
             robots[i, :] = self._mates_positions[i-1]
         
-        print("Robots. ", robots)
         
-        """
+        
         try:
             pts = np.array(robots)
             dummy_points = np.zeros((5*self.robots_num, 2))
@@ -240,23 +239,23 @@ class CentroidEnv2(gym.Env):
 
             poly = Polygon(poly_vert)           # global Voronoi cell
             
-            '''
-            # Intersect with robot range
-            range_pts = []
-            for th in np.arange(0.0, 2*np.pi, 0.5):
-                xi = x + self.sensing_range * np.cos(th)
-                yi = y + self.sensing_range * np.sin(th)
-                pt = Point(xi, yi)
-                range_pts.append(pt)
             
-            range_poly = Polygon(range_pts)
-            lim_region = intersection(poly, range_poly)
-            lim_regions.append(lim_region)
-            '''
+            # # Intersect with robot range
+            # range_pts = []
+            # for th in np.arange(0.0, 2*np.pi, 0.5):
+            #     xi = x + self.sensing_range * np.cos(th)
+            #     yi = y + self.sensing_range * np.sin(th)
+            #     pt = Point(xi, yi)
+            #     range_pts.append(pt)
+            # 
+            # range_poly = Polygon(range_pts)
+            # lim_region = intersection(poly, range_poly)
+            # # lim_regions.append(lim_region)
+            
         except:
             terminated = False
             truncated = True
-            reward = -1000
+            reward = -100
             observation = self._get_obs()
             info = self._get_info()
             return observation, reward, terminated, truncated, info
@@ -271,19 +270,34 @@ class CentroidEnv2(gym.Env):
             #             d = np.linalg.norm(x_ij - self._robot_position)
             #             reward += d**2 * self.grid[self.i_start+i, self.i_start+j]
             
-        Cx = 0.0
-        Cy = 0.0
-        A = 0.0
-        for i in range(self.size):
-            for j in range(self.size):
-                x_pt = Point(i*self.discretize_precision, j*self.discretize_precision)
-                x_ij = np.array([i*self.discretize_precision, j*self.discretize_precision])
-                if poly.contains(x_pt):
-                    dA_pdf = self.grid[self.i_start+i, self.i_start+j]
-                    A += dA_pdf
-                    Cx += i*self.discretize_precision * dA_pdf
-                    Cy += j*self.discretize_precision * dA_pdf
+        # Cx = 0.0
+        # Cy = 0.0
+        # A = 0.0
+        # for i in range(self.size):
+        #     for j in range(self.size):
+        #         x_pt = Point(i*self.discretize_precision, j*self.discretize_precision)
+        #         x_ij = np.array([i*self.discretize_precision, j*self.discretize_precision])
+        #         if poly.contains(x_pt):
+        #             dA_pdf = self.grid[self.i_start+i, self.i_start+j]
+        #             A += dA_pdf
+        #             Cx += i*self.discretize_precision * dA_pdf
+        #             Cy += j*self.discretize_precision * dA_pdf
+        # 
+        # Cx = Cx / A
+        # Cy = Cy / A
+        # print("std centroid. ", Cx, Cy)
 
+        # Vertices
+        # vx, vy = lim_region.exterior.coords.xy
+        vertices = get_coordinates(poly)
+        # print("RObot: ", self._robot_position)
+        # print("Vertices: ", vertices)
+        weights = np.array([self.grid[int(v[0]/self.discretize_precision)+self.i_start, int(v[1]/self.discretize_precision)+self.i_start] for v in vertices])
+        # Check if weights are 0 and get unweighted mean
+        if not weights.any():
+            weights = None
+        centr = np.average(vertices, weights=weights, axis=0)        
+        '''
         if A == 0.0:
             centroid = poly.centroid
             Cx = centroid.x
@@ -293,6 +307,7 @@ class CentroidEnv2(gym.Env):
             Cy = Cy / A
         
         centr = np.array([Cx, Cy])
+        '''
 
         """
         voronoi = Voronoi(robots)
@@ -305,6 +320,7 @@ class CentroidEnv2(gym.Env):
             centr = np.average(vertices, weights=weights)
         else:
             centr = np.array([self.width/2, self.width/2])
+        """
         
         dist = np.linalg.norm(self._robot_position - centr)
         # print("Distance to centroid: ", dist)
@@ -324,10 +340,10 @@ class CentroidEnv2(gym.Env):
 
         # episode is done iff the agent has reached the target
         # terminated = np.linalg.norm(self._robot_position - self._mean_pt) < self.CONVERGENCE_TOLERANCE
-        terminated = dist < 0.2
+        terminated = dist < 0.5
         truncated = self.t > 1000
         if terminated:
-            reward = 100
+            reward = 1000
         elif truncated:
             reward = -100
         # xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
