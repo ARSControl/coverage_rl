@@ -31,7 +31,7 @@ from envs.singleobs_env import SingleObsEnv
 from envs.grid_mates_env import GridMatesEnv
 from envs.centroid_env import CentroidEnv
 from envs.centroid_env2 import CentroidEnv2
-from envs.discr_env import DiscreteEnv
+# from envs.discr_env import DiscreteEnv
 from envs.global_env import GlobalEnv
 
 path = Path().resolve()
