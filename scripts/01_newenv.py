@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import os, sys
-from stable_baselines3 import PPO, DQN, A2C, DDPG
+from stable_baselines3 import PPO, DQN, A2C, DDPG, TD3
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.policies import ActorCriticPolicy
@@ -33,6 +33,9 @@ from envs.centroid_env import CentroidEnv
 from envs.centroid_env2 import CentroidEnv2
 # from envs.discr_env import DiscreteEnv
 from envs.global_env import GlobalEnv
+from envs.local_env import LocalEnv
+from envs.imitation_env import ImitationEnv
+
 
 path = Path().resolve()
 video_folder = str(path/"videos")
@@ -42,8 +45,8 @@ video_length = 100
 
 # Create env
 num_envs = 4
-# env = CentroidEnv()
-env = make_vec_env(CentroidEnv2, n_envs=num_envs)
+# env = LocalEnv()
+env = make_vec_env(ImitationEnv, n_envs=num_envs)
 # env = FlattenObservation(env)
 print("Environment: ", env)
 print("Action space shape: ", env.action_space)
@@ -70,10 +73,12 @@ checkpoint_callback = CheckpointCallback(
 # Train agent
 policy_kwargs = {"normalize_images": False}
 model = PPO("MultiInputPolicy", env, verbose=1)
+# model = PPO.load(str(model_folder/"LocalEnv_PPO_2"))
+# model.set_env(env)
 print("Model:" , model)
-total_timesteps = 3_000_000
+total_timesteps = 15_000_000
 model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
-model.save(str(model_folder/"CentroidEnv2_PPO"))
+model.save(str(model_folder/"ImitationEnv_PPO_15M"))
 env.close()
 
 
