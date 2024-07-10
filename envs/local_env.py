@@ -137,6 +137,7 @@ class LocalEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.t = 0
+        self.stop_count = 0
 
         # random robot's position
         # self._robot_position = np.array([1.0, 1.0])
@@ -204,6 +205,10 @@ class LocalEnv(gym.Env):
         x, y = self._robot_position             # [meters]
         '''
         self.t += 1
+        if np.linalg.norm(action) < 0.15:
+            self.stop_count += 1
+        else:
+            self.stop_count = 0
         self._robot_position = np.clip(self._robot_position + action*self.dt, 0.5, self.width-0.5)
 
         x, y = self._robot_position
@@ -226,20 +231,20 @@ class LocalEnv(gym.Env):
         for x_j in self._mates_positions:
             d = np.linalg.norm(self._robot_position - x_j)
             if d < self.sensing_range:
-                reward -= 10*self.sensing_range - 10*d
+                reward -= 1000*self.sensing_range - 1000*d
 
 
         # dist = np.linalg.norm(centr - x_ij)
         # print("Distance to centroid: ", dist)
 
         # episode is done iff the agent has reached the target
-        # terminated = np.linalg.norm(self._robot_position - self._mean_pt) < self.CONVERGENCE_TOLERANCE
-        terminated = self.t > 1000
+        # terminated = self.t > 1000
+        terminated = self.stop_count > 3 
         truncated = self.t > 1000
-        # if terminated:
-        #     reward = 1000
-        # elif truncated:
-        #     reward = -100
+        if terminated:
+            reward = 1000
+        elif truncated:
+            reward = -100
         # xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
         # observations = [self._get_obs(i) for i in range(self.robots_num)]
         # reward = np.sum(observation) - 10*self.t            # reward = sum of values in sensing range

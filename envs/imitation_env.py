@@ -308,10 +308,10 @@ class ImitationEnv(gym.Env):
         # terminated = np.linalg.norm(self._robot_position - self._mean_pt) < self.CONVERGENCE_TOLERANCE
         terminated = diff <= 0.15 and np.linalg.norm(expert_vel) < 0.15 
         truncated = self.t > 1000
-        # if terminated:
-        #     reward = 1000
-        # elif truncated:
-        #     reward = -100
+        if terminated:
+            reward = 1000
+        elif truncated:
+            reward = -100
         # xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
         # observations = [self._get_obs(i) for i in range(self.robots_num)]
         # reward = np.sum(observation) - 10*self.t            # reward = sum of values in sensing range
