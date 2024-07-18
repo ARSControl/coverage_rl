@@ -307,9 +307,9 @@ class ImitationEnv(gym.Env):
         # episode is done iff the agent has reached the target
         # terminated = np.linalg.norm(self._robot_position - self._mean_pt) < self.CONVERGENCE_TOLERANCE
         terminated = diff <= 0.15 and np.linalg.norm(expert_vel) < 0.15 
-        truncated = self.t > 1000
+        truncated = self.t > 10000
         if terminated:
-            reward = 1000
+            reward = 10000
         elif truncated:
             reward = -100
         # xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
