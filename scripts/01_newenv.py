@@ -35,6 +35,7 @@ from envs.centroid_env2 import CentroidEnv2
 from envs.global_env import GlobalEnv
 from envs.local_env import LocalEnv
 from envs.imitation_env import ImitationEnv
+from envs.dqn_env import DQNEnv
 
 
 path = Path().resolve()
@@ -46,19 +47,19 @@ video_length = 100
 # Create env
 num_envs = 4
 # env = LocalEnv()
-env = make_vec_env(ImitationEnv, n_envs=num_envs)
+env = make_vec_env(DQNEnv, n_envs=num_envs)
 # env = FlattenObservation(env)
-print("Environment: ", env)
+print("Environment: DQNEnv")
 print("Action space shape: ", env.action_space)
-print("Observation space: ", env.observation_space.items())
-for key, subspace in env.observation_space.spaces.items():
-  print("Key: ", key)
-  print("Subspace. ", subspace)
-  print("Image? ", preprocessing.is_image_space(subspace))
+# print("Observation space: ", env.observation_space.items())
+# for key, subspace in env.observation_space.spaces.items():
+#   print("Key: ", key)
+#   print("Subspace. ", subspace)
+#   print("Image? ", preprocessing.is_image_space(subspace))
 
-obs, info = env.reset()
+# obs, info = env.reset()
 # print("Obs shape: ", obs.shape)
-print("Observation: ", obs)
+# print("Observation: ", obs)
 
 # Save a checkpoint every 10000 steps
 checkpoint_callback = CheckpointCallback(
@@ -72,13 +73,13 @@ checkpoint_callback = CheckpointCallback(
 
 # Train agent
 policy_kwargs = {"normalize_images": False}
-model = PPO("MultiInputPolicy", env, verbose=1)
-# model = PPO.load(str(model_folder/"LocalEnv_PPO_2"))
+model = DQN("MlpPolicy", env, verbose=1)
+# model = PPO.load(str(model_folder/"LocalEnv_DQN_15M"))
 # model.set_env(env)
-print("Model:" , model)
-total_timesteps = 15_000_000
-model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
-model.save(str(model_folder/"ImitationEnv_PPO_15M"))
+# print("Model:" , model)
+total_timesteps = 30_000_000
+model.learn(total_timesteps=total_timesteps)#, callback=checkpoint_callback)
+model.save(str(model_folder/"LocalEnv_DQN_15M"))
 env.close()
 
 
