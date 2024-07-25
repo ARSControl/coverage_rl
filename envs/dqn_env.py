@@ -53,7 +53,7 @@ def gauss_pdf(x, y, mean, covariance):
 class DQNEnv(gym.Env):
     metadata =  {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, robot_range=3, robots_num=3, safety_dist=1, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
+    def __init__(self, robot_range=3, robots_num=3, safety_dist=1, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=20, width=10):
         self.size = size
         self.window_size = 512
         self.sensing_range = robot_range
