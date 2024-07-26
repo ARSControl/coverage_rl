@@ -53,7 +53,7 @@ def gauss_pdf(x, y, mean, covariance):
 class DQNEnv(gym.Env):
     metadata =  {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, robot_range=3, robots_num=3, safety_dist=1, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=20, width=10):
+    def __init__(self, robot_range=3, robots_num=3, safety_dist=1, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
         self.size = size
         self.window_size = 512
         self.sensing_range = robot_range
@@ -140,9 +140,9 @@ class DQNEnv(gym.Env):
         pad_i = self.obs_shape - obs.shape[0]
         pad_j = self.obs_shape - obs.shape[1]
         if pad_i > 0:
-            obs = np.concatenate((-1*np.ones((pad_i, obs.shape[1])), obs), 0)
+            obs = np.concatenate((np.zeros((pad_i, obs.shape[1])), obs), 0)
         if pad_j > 0:
-            obs = np.concatenate((-1*np.ones((obs.shape[0], pad_j)), obs), 1)
+            obs = np.concatenate((np.zeros((obs.shape[0], pad_j)), obs), 1)
 
         norm_obs = 100*obs
 
@@ -268,7 +268,7 @@ class DQNEnv(gym.Env):
         for x_j in self._mates_positions:
             d = np.linalg.norm(self._robot_position - x_j)
             if d < self.sensing_range:
-                reward -= 10 - 10/self.sensing_range * d
+                reward -= 1000 - 1000/self.sensing_range * d
 
 
         # dist = np.linalg.norm(centr - x_ij)
@@ -285,8 +285,8 @@ class DQNEnv(gym.Env):
         # xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
         # observations = [self._get_obs(i) for i in range(self.robots_num)]
         # reward = np.sum(observation) - 10*self.t            # reward = sum of values in sensing range
-        observation = self._get_obs()
-        info = self._get_info()
+        # observation = self._get_obs()
+        # info = self._get_info()
 
         # if x < 0.0 or x > self.width or y < 0.0 or y > self.width:
         #     reward = -1000
@@ -342,12 +342,16 @@ class DQNEnv(gym.Env):
                     )
         
         else:
-            obs = self._get_obs()["grid"]
-            for i in range(obs.shape[1]):
-                for j in range(obs.shape[2]):
+            obs = self._get_obs()
+            # print("Min/Max obs : ", obs.min(), obs.max())
+            obs = (obs / obs.max() * 255).astype(int)
+            for i in range(obs.shape[0]):
+                for j in range(obs.shape[1]):
+                    color = (0, 0, obs[i,j]) if obs[i,j] >= 0 else (-min(255,obs[i,j]), 0, 0)
+                    # print("COlor: ", color)
                     pygame.draw.rect(
                         canvas,
-                        (0, 0, obs[0,i,j]),
+                        color,
                         pygame.Rect(
                             pix_square_size * np.array([self._robot_position[0]/self.discretize_precision+i-self.obs_shape/2, self._robot_position[1]/self.discretize_precision+j-self.obs_shape/2]),
                             (pix_square_size, pix_square_size),
@@ -360,7 +364,7 @@ class DQNEnv(gym.Env):
                 canvas,
                 (0, 255, 0),
                 self._mates_positions[i] * pix_square_size / self.discretize_precision,
-                pix_square_size / 3 * 5,
+                pix_square_size,
             )
 
         # draw the robot
@@ -368,7 +372,7 @@ class DQNEnv(gym.Env):
             canvas,
             (0, 255, 0),
             self._robot_position * pix_square_size / self.discretize_precision,
-            pix_square_size / 3 * 5,
+            pix_square_size,
         )
 
         # Draw mean pt
@@ -376,7 +380,7 @@ class DQNEnv(gym.Env):
             canvas,
             (0, 0, 255),
             self._mean_pt * pix_square_size / self.discretize_precision,
-            pix_square_size / 3 * 5,
+            pix_square_size,
         )
 
         # Draw centroid
