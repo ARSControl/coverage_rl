@@ -74,9 +74,10 @@ class ImitationEnv(gym.Env):
         # self.observation_space = spaces.Box(low=0.0, high=self.size-1, shape=(2,), dtype=np.float32)
 
 
-        grid_obs = spaces.Box(low=0, high=255, shape=(1, self.obs_shape, self.obs_shape), dtype=np.uint8)
+        grid_obs = spaces.Box(low=0, high=100, shape=(self.obs_shape, self.obs_shape), dtype=np.float32)
         mates_obs = spaces.Box(low=-self.width, high=self.width, shape=(self.robots_num-1, 2), dtype=np.float32)
-        self.observation_space = spaces.Dict({"grid": grid_obs, "mates": mates_obs})
+        # self.observation_space = spaces.Dict({"grid": grid_obs, "mates": mates_obs})
+        self.observation_space = grid_obs
 
         # ACtion space: x and y direction in range [-1, 1]
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
@@ -115,14 +116,18 @@ class ImitationEnv(gym.Env):
         if pad_j > 0:
             obs = np.concatenate((np.zeros((obs.shape[0], pad_j)), obs), 1)
 
-        norm_obs = (255*obs).astype(int)
+        norm_obs = 100*obs
+        
+        for mate in self._mates_positions:
+            
+
 
         
         
-        mates = [self._mates_positions[i] - self._robot_position for i in range(self.robots_num-1)]
+        # mates = [self._mates_positions[i] - self._robot_position for i in range(self.robots_num-1)]
 
-        dict_obs = {"grid": np.expand_dims(norm_obs, 0), "mates": mates}
-        return dict_obs
+        # dict_obs = {"grid": np.expand_dims(norm_obs, 0), "mates": mates}
+        # return dict_obs
         # return np.expand_dims(obs, 0)
         
 
