@@ -107,8 +107,15 @@ class ImitationEnv(gym.Env):
         jmin = int(ymin / self.discretize_precision) + self.i_start
         jmax = int(ymax / self.discretize_precision) + self.i_start
 
-        # extract observation from grid        
-        obs = self.grid[imin:imax, jmin:jmax]
+        # extract observation from grid
+        global_obs = self.grid      
+        for mate in self._mates_positions:
+            xm, ym = mate[0], mate[1]
+            im = int(xm / self.discretize_precision) + self.i_start
+            jm = int(ym / self.discretize_precision) + self.i_start
+            global_obs[im, jm] = -1
+        
+        obs = global_obs[imin:imax, jmin:jmax]
         pad_i = self.obs_shape - obs.shape[0]
         pad_j = self.obs_shape - obs.shape[1]
         if pad_i > 0:
@@ -118,8 +125,9 @@ class ImitationEnv(gym.Env):
 
         norm_obs = 100*obs
         
-        for mate in self._mates_positions:
-            
+        
+
+        return norm_obs
 
 
         
@@ -258,7 +266,7 @@ class ImitationEnv(gym.Env):
         except:
             terminated = False
             truncated = True
-            reward = -100
+            reward = -1000
             observation = self._get_obs()
             info = self._get_info()
             return observation, reward, terminated, truncated, info
@@ -316,7 +324,7 @@ class ImitationEnv(gym.Env):
         if terminated:
             reward = 10000
         elif truncated:
-            reward = -100
+            reward = -1000
         # xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
         # observations = [self._get_obs(i) for i in range(self.robots_num)]
         # reward = np.sum(observation) - 10*self.t            # reward = sum of values in sensing range
@@ -362,6 +370,16 @@ class ImitationEnv(gym.Env):
         # for i in range(obs.shape[0]):
         #     for j in range(obs.shape[1]):
 
+        # Draw the teammates
+        for i in range(self.mates_num):
+            pygame.draw.circle(
+                canvas,
+                (0, 255, 0),
+                self._mates_positions[i] * pix_square_size / self.discretize_precision,
+                pix_square_size / 3 * 5,
+            )
+
+
         
         # draw probability density
         if not self.local_vis:
@@ -377,27 +395,20 @@ class ImitationEnv(gym.Env):
                     )
         
         else:
-            obs = self._get_obs()["grid"]
-            for i in range(obs.shape[1]):
-                for j in range(obs.shape[2]):
+            obs = self._get_obs()
+            for i in range(obs.shape[0]):
+                for j in range(obs.shape[1]):
+                    color = (0,0,obs[i,j]/100*255) if obs[i,j] >= 0 else (-obs[i,j]/100*255,0,0)
                     pygame.draw.rect(
                         canvas,
-                        (0, 0, obs[0,i,j]),
+                        color,
                         pygame.Rect(
                             pix_square_size * np.array([self._robot_position[0]/self.discretize_precision+i-self.obs_shape/2, self._robot_position[1]/self.discretize_precision+j-self.obs_shape/2]),
                             (pix_square_size, pix_square_size),
                         )
                     )
 
-        # Draw the teammates
-        for i in range(self.mates_num):
-            pygame.draw.circle(
-                canvas,
-                (0, 255, 0),
-                self._mates_positions[i] * pix_square_size / self.discretize_precision,
-                pix_square_size / 3 * 5,
-            )
-
+        
         # draw the robot
         pygame.draw.circle(
             canvas,
