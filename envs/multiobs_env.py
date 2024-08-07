@@ -50,7 +50,7 @@ def gauss_pdf(x, y, mean, covariance):
 
 
 
-class MultiEnv(gym.Env):
+class MultiObsEnv(gym.Env):
     metadata =  {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(self, robot_range=3, robots_num=3, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
@@ -168,8 +168,8 @@ class MultiEnv(gym.Env):
                 self.grid[self.i_start+i, self.i_start+j] = gauss_pdf(i*self.discretize_precision, j*self.discretize_precision, self._mean_pt, self.covariance)
 
         # Normalize values
-        self.grid -= self.grid.min()
-        self.grid /= self.grid.max()
+        # self.grid -= self.grid.min()
+        # self.grid /= self.grid.max()
 
         '''
         # obstacles
@@ -260,7 +260,15 @@ class MultiEnv(gym.Env):
                     if lim_region.contains(x_pt):
                         reward += self.grid[self.i_start+i, self.i_start+j]
 
-        
+        reward -= self.t
+        for i in range(self.robots_num):
+            x_i = self._robots_positions[i]
+            neighs = self._robots_positions[:i] + self._robots_positions[i+1:]
+            for x_j in neighs:
+                d = np.linalg.norm(x_i - x_j)
+                if d < 2.0:
+                    reward -= 50 - 25*d
+
         # dist = np.linalg.norm(centr - x_ij)
         # print("Distance to centroid: ", dist)
 

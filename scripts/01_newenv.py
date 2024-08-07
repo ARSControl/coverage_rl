@@ -36,6 +36,7 @@ from envs.global_env import GlobalEnv
 from envs.local_env import LocalEnv
 from envs.imitation_env import ImitationEnv
 from envs.dqn_env import DQNEnv
+from envs.centr_multienv import CentrMultiEnv
 
 
 path = Path().resolve()
@@ -43,60 +44,65 @@ video_folder = str(path/"videos")
 model_folder = path/"models"
 video_length = 100
 
-
-# Create env
-num_envs = 4
-# env = LocalEnv()
-env = make_vec_env(DQNEnv, n_envs=num_envs)
-# env = FlattenObservation(env)
-print("Environment: DQNEnv")
-print("Action space shape: ", env.action_space)
-# print("Observation space: ", env.observation_space.items())
-# for key, subspace in env.observation_space.spaces.items():
-#   print("Key: ", key)
-#   print("Subspace. ", subspace)
-#   print("Image? ", preprocessing.is_image_space(subspace))
-
-# obs, info = env.reset()
-# print("Obs shape: ", obs.shape)
-# print("Observation: ", obs)
-
-# Save a checkpoint every 10000 steps
-checkpoint_callback = CheckpointCallback(
-  save_freq=50000,
-  save_path=str(model_folder),
-  name_prefix="temp",
-  save_replay_buffer=False,
-  save_vecnormalize=False,
-)
+TRAIN = True
+EVAL = True
 
 
-# Train agent
-policy_kwargs = {"normalize_images": False}
-model = DQN("MlpPolicy", env, verbose=1)
-# model = PPO.load(str(model_folder/"LocalEnv_DQN_15M"))
-# model.set_env(env)
-# print("Model:" , model)
-total_timesteps = 30_000_000
-model.learn(total_timesteps=total_timesteps)#, callback=checkpoint_callback)
-model.save(str(model_folder/"LocalEnv_DQN_15M"))
-env.close()
+if TRAIN:
+  # Create env
+  num_envs = 4
+  # env = LocalEnv()
+  env = make_vec_env(CentrMultiEnv, n_envs=num_envs)
+  # env = FlattenObservation(env)
+  print("Environment: CentrMultiEnv")
+  print("Action space shape: ", env.action_space)
+  # print("Observation space: ", env.observation_space.items())
+  # for key, subspace in env.observation_space.spaces.items():
+  #   print("Key: ", key)
+  #   print("Subspace. ", subspace)
+  #   print("Image? ", preprocessing.is_image_space(subspace))
+
+  # obs, info = env.reset()
+  # print("Obs shape: ", obs.shape)
+  # print("Observation: ", obs)
+
+  # Save a checkpoint every 10000 steps
+  checkpoint_callback = CheckpointCallback(
+    save_freq=50000,
+    save_path=str(model_folder),
+    name_prefix="temp",
+    save_replay_buffer=False,
+    save_vecnormalize=False,
+  )
+
+
+  # Train agent
+  policy_kwargs = {"normalize_images": False}
+  model = PPO("MlpPolicy", env, verbose=1)
+  # model = PPO.load(str(model_folder/"LocalEnv_DQN_15M"))
+  # model.set_env(env)
+  # print("Model:" , model)
+  total_timesteps = 15_000_000
+  model.learn(total_timesteps=total_timesteps)#, callback=checkpoint_callback)
+  model.save(str(model_folder/"CentrMultiEnv_PPO_15M"))
+  env.close()
 
 
 
-env = CentroidEnv2(render_mode="human", local_vis=False)
-# env = FlattenObservation(env)
-obs, info = env.reset()
+if EVAL:
+  env = CentrMultiEnv(render_mode="human", local_vis=False)
+  # env = FlattenObservation(env)
+  obs, info = env.reset()
 
 
-for i in range(video_length+1):
-    actions = env.action_space.sample()
-    # action, _ = model.predict(obs)
-    obs, reward, terminated, truncated, info = env.step(actions)
-    print("Reward: ", reward)
-    env.render()
-    if terminated or truncated:
-        break
+  for i in range(video_length+1):
+      # actions = env.action_space.sample()
+      actions, _ = model.predict(obs)
+      obs, reward, terminated, truncated, info = env.step(actions)
+      print("Reward: ", reward)
+      env.render()
+      if terminated or truncated:
+          break
 
-print("Number of steps: ", i+1)
-env.close()
+  print("Number of steps: ", i+1)
+  env.close()
