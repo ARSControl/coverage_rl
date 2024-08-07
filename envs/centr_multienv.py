@@ -67,8 +67,9 @@ class CentrMultiEnv(gym.Env):
         obs_shape = int(2*self.sensing_range/self.discretize_precision)
         self.obs_shape = obs_shape
         self.CONVERGENCE_TOLERANCE = 0.2
-        self.dt = 0.2
-        self.target_reward = self.robots_num * np.pi * self.robot_range**2
+        self.dt = 0.25
+        self.target_reward = self.robots_num * np.pi * self.sensing_range**2
+        self.time_penalty = 0.1
         
         print("Discretize precision: ", self.discretize_precision)
         print("Shape: ", obs_shape)
@@ -199,11 +200,14 @@ class CentrMultiEnv(gym.Env):
         self.t += 1
         # for i in range(actions.shape[0]):
         #     self._robots_positions[i] = np.clip(self._robots_positions[i] + actions[i, :]*self.dt, 0, self.size)
-        self._robots_positions += actions
+        self._robots_positions = np.clip(self._robots_positions + actions*self.dt, 0, self.size)
 
-
+        # Define env polygon
+        coords = ((0., 0.), (0., self.size), (self.size, self.size), (self.size, 0.), (0., 0.))
+        env_poly = Polygon(coords)
         
 
+        """
         # Voronoi partitioning
         try:
             pts = self._robots_positions
@@ -245,6 +249,7 @@ class CentrMultiEnv(gym.Env):
             observation = self._get_obs()
             info = self._get_info()
             return observation, reward, terminated, truncated, info
+        
 
             # centr = np.array([poly.centroid.x, poly.centroid.y])
             
@@ -255,12 +260,26 @@ class CentrMultiEnv(gym.Env):
             #         if poly.contains(x_pt):
             #             d = np.linalg.norm(x_ij - self._robot_position)
             #             reward += d**2 * self.grid[self.i_start+i, self.i_start+j]
+        """
+        lim_regions = []
+        for i in range(self.robots_num):
+            x, y = self._robots_positions[i]
+            range_pts = []
+            for th in np.arange(0.0, 2*np.pi, 0.5):
+                xi = x + self.sensing_range * np.cos(th)
+                yi = y + self.sensing_range * np.sin(th)
+                pt = Point(xi, yi)
+                range_pts.append(pt)
+            
+            range_poly = Polygon(range_pts)
+            lim_regions.append(intersection(range_poly, env_poly))
+
 
         # CALCULATE REWARD AS TOTAL COVERED SURFACE BY THE TEAM
         cov_area = lim_regions[0]
         for region in lim_regions[1:]:
             cov_area = union(cov_area, region)
-        reward = cov_area.area
+        reward = cov_area.area - self.time_penalty * self.t
 
         """ COMMENT OUT FOR UNIFORM DISTRIBUTION   
         for i in range(self.size):
@@ -278,8 +297,8 @@ class CentrMultiEnv(gym.Env):
         # episode is done iff the agent has reached the target
         # terminated = np.linalg.norm(self._robot_position - self._mean_pt) < self.CONVERGENCE_TOLERANCE
         terminated = reward / self.target_reward >= 0.95                # terminate when 95% covered
-        print("Total covered surface: ", reward)
-        print("Ratio to max: ", reward / self.target_reward)
+        # print("Total covered surface: ", reward)
+        # print("Ratio to max: ", reward / self.target_reward)
         truncated = self.t > 1000
         # xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
         # observations = [self._get_obs(i) for i in range(self.robots_num)]
