@@ -8,7 +8,7 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 from shapely import Polygon, Point, intersection, union
 
 
-VMAX = 1.5
+VMAX = 1.0
 
 
 def mirror(points, width):
@@ -55,7 +55,7 @@ def gauss_pdf(x, y, mean, covariance):
 class CentrMultiEnv(gym.Env):
     metadata =  {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, robot_range=3, robots_num=6, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
+    def __init__(self, robot_range=3, robots_num=3, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
         self.size = size
         self.window_size = 512
         self.sensing_range = robot_range
@@ -67,8 +67,8 @@ class CentrMultiEnv(gym.Env):
         obs_shape = int(2*self.sensing_range/self.discretize_precision)
         self.obs_shape = obs_shape
         self.CONVERGENCE_TOLERANCE = 0.2
-        self.dt = 0.25
-        self.target_reward = self.robots_num * np.pi * self.sensing_range**2
+        self.dt = 1.0
+        self.target_reward = np.min(self.width**2, self.robots_num * np.pi * self.sensing_range**2)
         self.time_penalty = 0.1
         
         print("Discretize precision: ", self.discretize_precision)
@@ -88,7 +88,7 @@ class CentrMultiEnv(gym.Env):
             }
         )
         '''
-        self.observation_space = spaces.Box(low=0.0, high=self.size, shape=(self.robots_num, 2), dtype=np.float32)
+        self.observation_space = spaces.Box(low=0.0, high=self.width, shape=(self.robots_num, 2), dtype=np.float32)
 
         # ACtion space: x and y direction in range [-1, 1]
         self.action_space = spaces.Box(low=-VMAX, high=VMAX, shape=(self.robots_num, 2), dtype=np.float32)
@@ -200,10 +200,10 @@ class CentrMultiEnv(gym.Env):
         self.t += 1
         # for i in range(actions.shape[0]):
         #     self._robots_positions[i] = np.clip(self._robots_positions[i] + actions[i, :]*self.dt, 0, self.size)
-        self._robots_positions = np.clip(self._robots_positions + actions*self.dt, 0, self.size)
+        self._robots_positions = np.clip(self._robots_positions + actions*self.dt, 0, self.width)
 
         # Define env polygon
-        coords = ((0., 0.), (0., self.size), (self.size, self.size), (self.size, 0.), (0., 0.))
+        coords = ((0., 0.), (0., self.width), (self.width, self.width), (self.width, 0.), (0., 0.))
         env_poly = Polygon(coords)
         
 
