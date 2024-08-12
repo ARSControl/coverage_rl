@@ -39,7 +39,7 @@ class GridWorldEnv(gym.Env):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        self.cov = make_spd_matrix(n_dim=2, random_state=500)
+        self.cov = make_spd_matrix(n_dim=2, random_state=1000)
         self.cov *= 50
         #self.cov = np.array([20.0, 0], [0, 20.0])
 
@@ -56,17 +56,31 @@ class GridWorldEnv(gym.Env):
         obs_matrix = np.zeros((3,3))
         pdfs = []
 
+        #calculate max_value
+        max_pdf = 0.00
+        for i in range(0, self.size):
+            for j in range(0, self.size):
+                point = np.array((i,j))
+                pdf = float(self.eval_pdf(self._target_location,point,self.cov))
+                if pdf > max_pdf:
+                    max_pdf = pdf
+
         for i in range(current_location[0]-1,current_location[0]+2):
             for j in range(current_location[1]-1,current_location[1]+2):
                 if self.is_within_bounds(np.array((i,j))) and not self.is_on_obstacle(obstacles_locations, np.array((i,j))) :
-                    pdfs.append(self.eval_pdf(self._target_location,np.array((i,j)),self.cov))
+                    pdf_value = float(self.eval_pdf(self._target_location,np.array((i,j)),self.cov))
+                    #normalizing 
+                    pdf_value = float(pdf_value/max_pdf)
+                    pdfs.append(pdf_value)
                 else:
-                    pdfs.append(-20)
+                    pdfs.append(-10.0)
 
         for i in range(0,3):
             for j in range(0,3):
                 I = int(i*3+j)
                 obs_matrix[i,j] = pdfs[I]
+        
+        obs_matrix[1,1] = 0.0
 
         return obs_matrix
 
@@ -114,7 +128,7 @@ class GridWorldEnv(gym.Env):
         if self.render_mode == "human":
             info = self._render_frame()
 
-        self.cov = make_spd_matrix(n_dim=2, random_state=500)
+        self.cov = make_spd_matrix(n_dim=2, random_state=1000)
         self.cov *= 50
         #self.cov = np.array([20.0, 0], [0, 20.0])
 
@@ -138,15 +152,20 @@ class GridWorldEnv(gym.Env):
         self._agent_location = np.clip(self._agent_location + direction, 0, self.size - 1)
 
         #evaluate the pdf in the current agent position
-        self.pdf = self.eval_pdf(self._target_location, self._agent_location, self.cov)
+        pdf = self.eval_pdf(self._target_location, self._agent_location, self.cov)
+
+        if self.is_on_obstacle(self.get_obstacles(),self._agent_location):
+            r_value = -100.0
+        else:
+            r_value = pdf
 
         # episode is done if the agent has reached the target
         observation = self._get_obs(self._agent_location,self._obstacles_locations)
 
         #the reward is equal to the sum of all the observations around the robot
-        sum = np.sum(observation)
+        #sum = np.sum(observation)
         terminated = np.array_equal(self._agent_location, self._target_location)
-        reward = 1 if terminated else sum
+        reward = 100 if terminated else r_value
         info = self._get_info()
 
         if self.render_mode == "human":
