@@ -70,7 +70,7 @@ class GridWorldEnv(gym.Env):
                 if self.is_within_bounds(np.array((i,j))) and not self.is_on_obstacle(obstacles_locations, np.array((i,j))) :
                     pdf_value = float(self.eval_pdf(self._target_location,np.array((i,j)),self.cov))
                     #normalizing 
-                    pdf_value = float(pdf_value/max_pdf)
+                    #pdf_value = float(pdf_value/max_pdf)
                     pdfs.append(pdf_value)
                 else:
                     pdfs.append(-10.0)
