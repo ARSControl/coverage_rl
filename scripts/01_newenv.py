@@ -78,7 +78,7 @@ if TRAIN:
 
   # Train agent
   policy_kwargs = {"normalize_images": False}
-  model = PPO("MlpPolicy", env, verbose=1)
+  model = PPO("MultiInputPolicy", env, verbose=1)
   # model = PPO.load(str(model_folder/"LocalEnv_DQN_15M"))
   # model.set_env(env)
   # print("Model:" , model)
@@ -93,6 +93,10 @@ if EVAL:
   env = CentrMultiEnv(render_mode="human", local_vis=False)
   # env = FlattenObservation(env)
   obs, info = env.reset()
+
+  model = PPO("MlpPolicy", env, verbose=1)
+  model = PPO.load(str(model_folder/"CentrMultiEnv_PPO_15M"))
+  model.set_env(env)
 
 
   for i in range(video_length+1):

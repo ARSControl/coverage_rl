@@ -70,7 +70,8 @@ class CentrMultiEnv(gym.Env):
         self.dt = 1.0
         # self.target_reward = np.min(self.width**2, self.robots_num * np.pi * self.sensing_range**2)
         self.target_reward = self.robots_num * np.pi * self.sensing_range**2
-        self.time_penalty = 0.01
+        self.time_penalty = 0.1
+        self.lim_regions = []
         
         print("Discretize precision: ", self.discretize_precision)
         print("Shape: ", obs_shape)
@@ -89,7 +90,13 @@ class CentrMultiEnv(gym.Env):
             }
         )
         '''
-        self.observation_space = spaces.Box(low=0.0, high=self.width, shape=(self.robots_num, 2), dtype=np.float32)
+        # self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(self.robots_num, self.obs_shape, self.obs_shape), dtype=np.float32)
+        self.observation_space = spaces.Dict(
+            {
+                "pdf": spaces.Box(low=0, high=100, shape=(self.size, self.size), dtype=np.float32),
+                "robots": spaces.Box(low=0, high=self.size, shape=(self.robots_num, 2), dtype=np.float32)  
+            }
+        )
 
         # ACtion space: x and y direction in range [-1, 1]
         self.action_space = spaces.Box(low=-VMAX, high=VMAX, shape=(self.robots_num, 2), dtype=np.float32)
@@ -103,49 +110,19 @@ class CentrMultiEnv(gym.Env):
 
 
     def _get_obs(self):
-        '''
-        x, y = self._robots_positions[id]
-        half_obs_size = self.obs_shape // 2
+        discr_robots = np.zeros_like(self._robots_positions)
+        for i in range(self.robots_num):
+            x,y = self._robots_positions[i]
+            discr_robots[i, 0] = x // self.discretize_precision
+            discr_robots[i, 1] = y // self.discretize_precision
+            
+        obs = {"pdf": self.grid[self.i_start:-self.i_start, self.i_start:-self.i_start], "robots": discr_robots}
 
-        xmin = x - self.sensing_range
-        xmax = x + self.sensing_range
-        ymin = y - self.sensing_range
-        ymax = y + self.sensing_range
 
         
-        # convert min and max x,y to indices (+ i_start to stay inside the env)
-        imin = int(xmin / self.discretize_precision) + self.i_start
-        imax = int(xmax / self.discretize_precision) + self.i_start
-        jmin = int(ymin / self.discretize_precision) + self.i_start
-        jmax = int(ymax / self.discretize_precision) + self.i_start
-
-        # extract observation from grid        
-        obs = self.grid[imin:imax, jmin:jmax]
-        pad_i = self.obs_shape - obs.shape[0]
-        pad_j = self.obs_shape - obs.shape[1]
-        if pad_i > 0:
-            obs = np.concatenate((np.zeros((pad_i, obs.shape[1])), obs), 0)
-        if pad_j > 0:
-            obs = np.concatenate((np.zeros((obs.shape[0], pad_j)), obs), 1)
-
-        mates = self._robots_positions[:id] + self._robots_positions[id+1:]
-        mates = np.array(mates)
-        print("Mates shape: ", mates.shape)
-        dict_obs = {"sensing": obs, "mates": mates, "agent": self._robots_positions[id]}
-        print(f"Robot {id} done")
-
-        # print("Obs shape: ", obs.shape)
-        
-        # range_obs[:obs.shape[0], :obs.shape[1]] = obs
-
-        # print("Obs shape: ", obs.shape)
-
-        return dict_obs
-        # return np.expand_dims(obs, 0)
-        '''
 
         # obs = np.array(self._robots_positions)
-        return self._robots_positions
+        return obs
 
     def _get_info(self):
         return {
@@ -159,14 +136,15 @@ class CentrMultiEnv(gym.Env):
         # random robot's position
         self._robots_positions = self.width * np.random.rand(self.robots_num, 2)
         # self._robot_position = np.array([1.0, 1.0])
-        self._mean_pt = self.width * np.random.rand(2)
+        # self._mean_pt = self.width * np.random.rand(2)
+        self._mean_pt = -2 + 4 * np.random.rand(2)
         # self._mean_pt = np.array([8.0, 2.0])
         # self.mates = self.width * np.random.rand(2, self.mates_num)
 
 
         # define prob values of the grid
         # env size: (size, size), with additional size/2 cells on each side
-        self.grid = np.zeros((2*self.size, 2*self.size))
+        self.grid = -1 * np.ones((2*self.size, 2*self.size))
         self.i_start = self.size // 2               # index of the 1st cell inside the env (both for rows and cols)
         
         for i in range(0, self.size):
@@ -174,8 +152,9 @@ class CentrMultiEnv(gym.Env):
                 self.grid[self.i_start+i, self.i_start+j] = gauss_pdf(i*self.discretize_precision, j*self.discretize_precision, self._mean_pt, self.covariance)
 
         # Normalize values
-        self.grid -= self.grid.min()
-        self.grid /= self.grid.max()
+        # self.grid -= self.grid.min()
+        # self.grid /= self.grid.max()
+        # print("Grid range: ", self.grid.min(), self.grid.max())
 
         '''
         # obstacles
@@ -208,7 +187,7 @@ class CentrMultiEnv(gym.Env):
         env_poly = Polygon(coords)
         
 
-        """
+        
         # Voronoi partitioning
         try:
             pts = self._robots_positions
@@ -218,7 +197,7 @@ class CentrMultiEnv(gym.Env):
             mir_pts = np.array(mirrored_points)
             dummy_points[self.robots_num:, :] = mir_pts
             reward = 0.0
-            lim_regions = []
+            self.lim_regions = []
             
             # calculate limited voronoi partitioning
             vor = Voronoi(dummy_points)
@@ -242,7 +221,7 @@ class CentrMultiEnv(gym.Env):
                 
                 range_poly = Polygon(range_pts)
                 lim_region = intersection(poly, range_poly)
-                lim_regions.append(lim_region)
+                self.lim_regions.append(lim_region)
         except:
             terminated = False
             truncated = True
@@ -261,7 +240,9 @@ class CentrMultiEnv(gym.Env):
             #         if poly.contains(x_pt):
             #             d = np.linalg.norm(x_ij - self._robot_position)
             #             reward += d**2 * self.grid[self.i_start+i, self.i_start+j]
+
         """
+
         lim_regions = []
         for i in range(self.robots_num):
             x, y = self._robots_positions[i]
@@ -281,25 +262,30 @@ class CentrMultiEnv(gym.Env):
         for region in lim_regions[1:]:
             cov_area = union(cov_area, region)
         reward = cov_area.area - self.time_penalty * self.t
+        """
 
-        """ COMMENT OUT FOR UNIFORM DISTRIBUTION   
+        
+        # COMMENT OUT FOR UNIFORM DISTRIBUTION   
         for i in range(self.size):
             for j in range(self.size):
                 x_pt = Point(i*self.discretize_precision, j*self.discretize_precision)
                 x_ij = np.array([i*self.discretize_precision, j*self.discretize_precision])
-                for lim_region in lim_regions:
+                for lim_region in self.lim_regions:
                     if lim_region.contains(x_pt):
-                        reward += self.grid[self.i_start+i, self.i_start+j]
-        """
+                        reward += self.grid[self.i_start+i, self.i_start+j] * self.discretize_precision**2
+
+        reward *= 1000
+        # print("Cumulative reward: ", reward)
         
         # dist = np.linalg.norm(centr - x_ij)
         # print("Distance to centroid: ", dist)
 
         # episode is done iff the agent has reached the target
         # terminated = np.linalg.norm(self._robot_position - self._mean_pt) < self.CONVERGENCE_TOLERANCE
-        terminated = reward / self.target_reward >= 0.95                # terminate when 95% covered
+        # terminated = reward / self.target_reward >= 0.95                # terminate when 95% covered
         # print("Total covered surface: ", reward)
         # print("Ratio to max: ", reward / self.target_reward)
+        terminated = reward > 900           # 90% coverage
         truncated = self.t > 1000
         # xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
         # observations = [self._get_obs(i) for i in range(self.robots_num)]
@@ -389,6 +375,19 @@ class CentrMultiEnv(gym.Env):
             self._mean_pt * pix_square_size / self.discretize_precision,
             pix_square_size / 3 * 5,
         )
+
+        # Draw Voronoi limited 
+        for lim_region in self.lim_regions:
+            x,y = lim_region.exterior.xy
+            coords = []
+            for i in range(len(x)):
+                coords.append([x[i] * pix_square_size / self.discretize_precision, y[i] * pix_square_size / self.discretize_precision])
+            # eprint("Number of coords: ", len(coords))
+            pygame.draw.polygon(
+                canvas,
+                (255, 0, 0, 1),
+                coords,
+            )
 
         # draw mates
         # for i in range(self.mates_num):
