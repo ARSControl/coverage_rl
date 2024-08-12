@@ -55,7 +55,7 @@ def gauss_pdf(x, y, mean, covariance):
 class CentrMultiEnv(gym.Env):
     metadata =  {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, robot_range=3, robots_num=3, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
+    def __init__(self, robot_range=1, robots_num=3, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
         self.size = size
         self.window_size = 512
         self.sensing_range = robot_range
@@ -68,8 +68,9 @@ class CentrMultiEnv(gym.Env):
         self.obs_shape = obs_shape
         self.CONVERGENCE_TOLERANCE = 0.2
         self.dt = 1.0
-        self.target_reward = np.min(self.width**2, self.robots_num * np.pi * self.sensing_range**2)
-        self.time_penalty = 0.1
+        # self.target_reward = np.min(self.width**2, self.robots_num * np.pi * self.sensing_range**2)
+        self.target_reward = self.robots_num * np.pi * self.sensing_range**2
+        self.time_penalty = 0.01
         
         print("Discretize precision: ", self.discretize_precision)
         print("Shape: ", obs_shape)
