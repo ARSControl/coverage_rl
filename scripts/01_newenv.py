@@ -21,23 +21,6 @@ import matplotlib.pyplot as plt
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
 from envs.grid_world import GridWorldEnv
-from envs.coverage_grid_env import CoverageGridEnv
-from envs.cont_env import ContinuousEnv
-from envs.dict_env import ContinuousEnvDict
-# from envs.cooperative_env import CooperativeEnv
-from envs.multi_env import MultiEnv
-from envs.multiobs_env import MultiObsEnv
-from envs.singleobs_env import SingleObsEnv
-from envs.grid_mates_env import GridMatesEnv
-from envs.centroid_env import CentroidEnv
-from envs.centroid_env2 import CentroidEnv2
-# from envs.discr_env import DiscreteEnv
-from envs.global_env import GlobalEnv
-from envs.local_env import LocalEnv
-from envs.imitation_env import ImitationEnv
-from envs.dqn_env import DQNEnv
-from envs.centr_multienv import CentrMultiEnv
-from envs.uniform_env import UniformEnv
 from envs.simple_env import SimpleEnv
 
 
@@ -70,7 +53,7 @@ if TRAIN:
 
   # Save a checkpoint every 10000 steps
   checkpoint_callback = CheckpointCallback(
-    save_freq=250000,
+    save_freq=50000,
     save_path=str(model_folder),
     name_prefix="temp",
     save_replay_buffer=False,
@@ -86,7 +69,7 @@ if TRAIN:
   # print("Model:" , model)
   total_timesteps = 3_000_000
   model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
-  model.save(str(model_folder/"SimpleEnv_PPO_15M"))
+  model.save(str(model_folder/"SimpleEnv_obs_PPO_3M"))
   env.close()
 
 

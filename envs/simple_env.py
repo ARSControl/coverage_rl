@@ -121,7 +121,6 @@ class SimpleEnv(gym.Env):
         self.grid -= self.grid.min()
         self.grid /= self.grid.max()
 
-        '''
         # obstacles
         for i in range(0, self.size):
             for j in range(0, self.size):
@@ -129,7 +128,7 @@ class SimpleEnv(gym.Env):
                 dist = np.linalg.norm(x_i - self.obstacle)
                 if dist < 1.0:
                     self.grid[self.i_start+i, self.i_start+j] = -(10 - 10*dist)
-        '''
+        
         
         return self._get_obs(), self._get_info()
 
@@ -210,9 +209,10 @@ class SimpleEnv(gym.Env):
             obs = self._get_obs()
             for i in range(obs.shape[0]):
                 for j in range(obs.shape[1]):
+                    color = (0, 0, 255*obs[i,j]) if obs[i,j] > 0 else (-255/10*obs[i,j], 0, 0)
                     pygame.draw.rect(
                         canvas,
-                        (0, 0, 255*obs[i,j]),
+                        color,
                         pygame.Rect(
                             pix_square_size * np.array([self._robot_position[0]/self.discretize_precision+i-self.obs_shape/2, self._robot_position[1]/self.discretize_precision+j-self.obs_shape/2]),
                             (pix_square_size, pix_square_size),
@@ -242,6 +242,7 @@ class SimpleEnv(gym.Env):
             self.obstacle * pix_square_size / self.discretize_precision,
             pix_square_size / 3 * 5,
         )
+
 
 
         if self.render_mode == "human":
