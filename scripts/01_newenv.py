@@ -37,6 +37,8 @@ from envs.local_env import LocalEnv
 from envs.imitation_env import ImitationEnv
 from envs.dqn_env import DQNEnv
 from envs.centr_multienv import CentrMultiEnv
+from envs.uniform_env import UniformEnv
+from envs.simple_env import SimpleEnv
 
 
 path = Path().resolve()
@@ -52,9 +54,9 @@ if TRAIN:
   # Create env
   num_envs = 4
   # env = LocalEnv()
-  env = make_vec_env(CentrMultiEnv, n_envs=num_envs)
+  env = make_vec_env(SimpleEnv, n_envs=num_envs)
   # env = FlattenObservation(env)
-  print("Environment: CentrMultiEnv")
+  print("Environment: UniformEnv")
   print("Action space shape: ", env.action_space)
   # print("Observation space: ", env.observation_space.items())
   # for key, subspace in env.observation_space.spaces.items():
@@ -68,7 +70,7 @@ if TRAIN:
 
   # Save a checkpoint every 10000 steps
   checkpoint_callback = CheckpointCallback(
-    save_freq=50000,
+    save_freq=250000,
     save_path=str(model_folder),
     name_prefix="temp",
     save_replay_buffer=False,
@@ -78,32 +80,33 @@ if TRAIN:
 
   # Train agent
   policy_kwargs = {"normalize_images": False}
-  model = PPO("MultiInputPolicy", env, verbose=1)
+  model = PPO("MlpPolicy", env, verbose=1)
   # model = PPO.load(str(model_folder/"LocalEnv_DQN_15M"))
   # model.set_env(env)
   # print("Model:" , model)
-  total_timesteps = 15_000_000
-  model.learn(total_timesteps=total_timesteps)#, callback=checkpoint_callback)
-  model.save(str(model_folder/"CentrMultiEnv_PPO_15M"))
+  total_timesteps = 3_000_000
+  model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
+  model.save(str(model_folder/"SimpleEnv_PPO_15M"))
   env.close()
 
 
 
 if EVAL:
-  env = CentrMultiEnv(render_mode="human", local_vis=False)
+  env = SimpleEnv(render_mode="human", local_vis=True)
   # env = FlattenObservation(env)
   obs, info = env.reset()
 
-  model = PPO("MlpPolicy", env, verbose=1)
-  model = PPO.load(str(model_folder/"CentrMultiEnv_PPO_15M"))
-  model.set_env(env)
+  # model = PPO("MlpPolicy", env, verbose=1)
+  # model = PPO.load(str(model_folder/"UniformEnv_PPO_15M"))
+  # model.set_env(env)
 
 
   for i in range(video_length+1):
-      # actions = env.action_space.sample()
-      actions, _ = model.predict(obs)
+      actions = env.action_space.sample()
+      # actions, _ = model.predict(obs)
       obs, reward, terminated, truncated, info = env.step(actions)
       print("Reward: ", reward)
+      print("obs shape: ", obs.shape)
       env.render()
       if terminated or truncated:
           break
