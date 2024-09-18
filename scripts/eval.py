@@ -40,11 +40,11 @@ RECORD_VIDEO = True
 render_mode = "rgb_array" if RECORD_VIDEO else "human"
 
 
-env = SimpleEnv(render_mode=render_mode, local_vis=True, size=100)
+env = SimpleEnv(obstacles_num=3, render_mode=render_mode, local_vis=True, size=100)
 obs, info = env.reset()
 print("Obs shape : ", obs)
 # env = FlattenObservation(env)
-model = PPO.load(str(model_folder/"SimpleEnv_PPO_15M"), env)
+model = PPO.load(str(model_folder/"SimpleEnv_obs_PPO_200k"), env)
 # model.set_env(env)
 obs, info = env.reset()
 # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=1)
@@ -89,5 +89,5 @@ for i in range(video_length+1):
 
 
 print("Number of steps: ", i+1)
-imageio.mimsave(os.path.join(video_folder, "simple.mp4"), [np.array(img) for i, img in enumerate(imgs)], fps=5)
+imageio.mimsave(os.path.join(video_folder, "simple_3obs.mp4"), [np.array(img) for i, img in enumerate(imgs)], fps=5)
 env.close()

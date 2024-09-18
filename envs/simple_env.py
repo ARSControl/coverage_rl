@@ -23,10 +23,11 @@ def gauss_pdf(x, y, mean, covariance):
 class SimpleEnv(gym.Env):
     metadata =  {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, robot_range=3, sigma=2, discr=0.2, render_mode=None, local_vis=True, size=100, width=10):
+    def __init__(self, robot_range=3, sigma=2, discr=0.2, obstacles_num=3, render_mode=None, local_vis=True, size=100, width=10):
         self.size = size
         self.window_size = 512
         self.sensing_range = robot_range
+        self.obstacles_num = obstacles_num
         self.width = width
         self.local_vis = local_vis
         self.discretize_precision = width / size
@@ -105,7 +106,9 @@ class SimpleEnv(gym.Env):
         # self._robot_position = np.array([1.0, 1.0])
         self._mean_pt = self.width * np.random.rand(2)
         # self._mean_pt = np.array([8.0, 2.0])
-        self.obstacle = self.width * np.random.rand(2)
+        self.obstacles = [self.width * np.random.rand(2) for _ in range(self.obstacles_num)]
+        for obstacle in self.obstacles:
+            print("obs: ", obstacle)
 
 
         # define prob values of the grid
@@ -118,18 +121,20 @@ class SimpleEnv(gym.Env):
                 self.grid[self.i_start+i, self.i_start+j] = gauss_pdf(i*self.discretize_precision, j*self.discretize_precision, self._mean_pt, self.covariance)
 
         # Normalize values
-        self.grid -= self.grid.min()
-        self.grid /= self.grid.max()
+        self.grid[self.grid >= 0] -= self.grid[self.grid >= 0].min()
+        self.grid[self.grid >= 0] /= self.grid[self.grid >= 0].max()
 
         # obstacles
+        self.k = 10
         for i in range(0, self.size):
             for j in range(0, self.size):
                 x_i = np.array([i*self.discretize_precision, j*self.discretize_precision])
-                dist = np.linalg.norm(x_i - self.obstacle)
-                if dist < 1.0:
-                    self.grid[self.i_start+i, self.i_start+j] = -(10 - 10*dist)
+                for obstacle in self.obstacles:
+                    dist = np.linalg.norm(x_i - obstacle)
+                    if dist < 1.0:
+                        self.grid[self.i_start+i, self.i_start+j] = -self.k*(1 - dist)
         
-        
+        print("Min val: ", self.grid.min())
         return self._get_obs(), self._get_info()
 
     
@@ -209,7 +214,7 @@ class SimpleEnv(gym.Env):
             obs = self._get_obs()
             for i in range(obs.shape[0]):
                 for j in range(obs.shape[1]):
-                    color = (0, 0, 255*obs[i,j]) if obs[i,j] > 0 else (-255/10*obs[i,j], 0, 0)
+                    color = (0, 0, 255*obs[i,j]) if obs[i,j] > 0 else (-255/self.k*obs[i,j], 0, 0)
                     pygame.draw.rect(
                         canvas,
                         color,
@@ -236,12 +241,13 @@ class SimpleEnv(gym.Env):
         )
 
         # draw obstacle
-        pygame.draw.circle(
-            canvas,
-            (255, 0, 0),
-            self.obstacle * pix_square_size / self.discretize_precision,
-            pix_square_size / 3 * 5,
-        )
+        for obstacle in self.obstacles:
+            pygame.draw.circle(
+                canvas,
+                (255, 0, 0),
+                obstacle * pix_square_size / self.discretize_precision,
+                pix_square_size / 3 * 5,
+            )
 
 
 
