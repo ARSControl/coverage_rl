@@ -11,23 +11,6 @@ from stable_baselines3.common.vec_env import VecVideoRecorder
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
-from envs.cont_env import ContinuousEnv
-from envs.dict_env import ContinuousEnvDict
-from envs.cooperative_env import CooperativeEnv
-from envs.multi_env import MultiEnv
-from envs.multiobs_env import MultiObsEnv
-from envs.singleobs_env import SingleObsEnv
-from envs.grid_mates_env import GridMatesEnv
-from envs.centroid_env import CentroidEnv
-from envs.centroid_env2 import CentroidEnv2
-from envs.global_env import GlobalEnv
-from envs.local_env import LocalEnv
-from envs.test_env import TestEnv
-from envs.dqn_env import DQNEnv
-from envs.dqn_multi_env import MultiDQNEnv
-from envs.imitation_env import ImitationEnv
-from envs.centr_multienv import CentrMultiEnv
-from envs.uniform_env import UniformEnv
 from envs.simple_env import SimpleEnv
 
 
