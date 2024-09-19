@@ -44,13 +44,13 @@ env = SimpleEnv(obstacles_num=3, render_mode=render_mode, local_vis=True, size=1
 obs, info = env.reset()
 print("Obs shape : ", obs)
 # env = FlattenObservation(env)
-model = PPO.load(str(model_folder/"SimpleEnv_obs_PPO_200k"), env)
+model = PPO.load(str(model_folder/"SimpleEnv_obs_t_PPO_3M"), env)
 # model.set_env(env)
 obs, info = env.reset()
 # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=1)
 # print(f"Mean reward: {mean_reward}, std: {std_reward}")
 
-alpha = 0.75
+alpha = 1
 prev_action = None
 """
 for i in range(video_length+1):

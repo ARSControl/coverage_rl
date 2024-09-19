@@ -69,7 +69,7 @@ if TRAIN:
   # print("Model:" , model)
   total_timesteps = 3_000_000
   model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
-  model.save(str(model_folder/"SimpleEnv_obs_PPO_3M"))
+  model.save(str(model_folder/"SimpleEnv_obs_t_PPO_3M"))
   env.close()
 
 

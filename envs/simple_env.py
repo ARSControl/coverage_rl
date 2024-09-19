@@ -23,7 +23,7 @@ def gauss_pdf(x, y, mean, covariance):
 class SimpleEnv(gym.Env):
     metadata =  {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, robot_range=3, sigma=2, discr=0.2, obstacles_num=3, render_mode=None, local_vis=True, size=100, width=10):
+    def __init__(self, robot_range=3, sigma=3, discr=0.2, obstacles_num=3, render_mode=None, local_vis=True, size=100, width=10):
         self.size = size
         self.window_size = 512
         self.sensing_range = robot_range
@@ -103,12 +103,11 @@ class SimpleEnv(gym.Env):
 
         # random robot's position
         self._robot_position = self.width * np.random.rand(2)
-        # self._robot_position = np.array([1.0, 1.0])
+        # self._robot_position = np.array([1.0, 8.0])
         self._mean_pt = self.width * np.random.rand(2)
-        # self._mean_pt = np.array([8.0, 2.0])
+        # self._mean_pt = np.array([6.0, 3.0])
         self.obstacles = [self.width * np.random.rand(2) for _ in range(self.obstacles_num)]
-        for obstacle in self.obstacles:
-            print("obs: ", obstacle)
+        # self.obstacles[0] = np.array([5.0, 5.0])
 
 
         # define prob values of the grid
@@ -121,11 +120,11 @@ class SimpleEnv(gym.Env):
                 self.grid[self.i_start+i, self.i_start+j] = gauss_pdf(i*self.discretize_precision, j*self.discretize_precision, self._mean_pt, self.covariance)
 
         # Normalize values
-        self.grid[self.grid >= 0] -= self.grid[self.grid >= 0].min()
-        self.grid[self.grid >= 0] /= self.grid[self.grid >= 0].max()
+        self.grid -= self.grid.min()
+        self.grid /= self.grid.max()
 
         # obstacles
-        self.k = 10
+        self.k = 1
         for i in range(0, self.size):
             for j in range(0, self.size):
                 x_i = np.array([i*self.discretize_precision, j*self.discretize_precision])
@@ -134,7 +133,6 @@ class SimpleEnv(gym.Env):
                     if dist < 1.0:
                         self.grid[self.i_start+i, self.i_start+j] = -self.k*(1 - dist)
         
-        print("Min val: ", self.grid.min())
         return self._get_obs(), self._get_info()
 
     
@@ -151,7 +149,7 @@ class SimpleEnv(gym.Env):
         xc, yc = int(x/self.discretize_precision), int(y/self.discretize_precision)       # cell
         observation = self._get_obs()
         # reward = np.sum(observation) - 10*self.t            # reward = sum of values in sensing range
-        reward = self.grid[self.i_start + xc, self.i_start + yc] #- 0.01*self.t # - collision_penalty
+        reward = self.grid[self.i_start + xc, self.i_start + yc] - 0.01*self.t # - collision_penalty
 
         info = self._get_info()
 
