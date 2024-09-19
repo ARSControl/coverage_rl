@@ -42,7 +42,7 @@ class SimpleEnv(gym.Env):
         # self.observation_space = spaces.Box(low=0.0, high=self.size-1, shape=(2,), dtype=np.float32)
 
         # Observation space: R cells around the robot (--> shape = R+1)
-        self.observation_space = spaces.Box(low=0, high=1,
+        self.observation_space = spaces.Box(low=-1, high=1,
                                             shape=(obs_shape, obs_shape),
                                             dtype=np.float32)
 
