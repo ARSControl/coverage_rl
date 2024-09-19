@@ -15,7 +15,7 @@ class GridWorldEnv(gym.Env):
 
         # Observations are dictionaries with the agent's and the target's location.
         # Each location is encoded as an element of  {0, ..., `size`}^2, i.e. MultiDiscrete([size, size])
-        self.observation_space = spaces.Box(0.0, 1.0, shape=(3,3), dtype= np.float64)
+        self.observation_space = spaces.Box(-1.0, 1.0, shape=(self.size,self.size), dtype= np.float64)
 
         # we have 4 actions, corresponding to "right", "up", "left", "down"
         self.action_space = spaces.Discrete(8)
@@ -40,7 +40,7 @@ class GridWorldEnv(gym.Env):
         self.render_mode = render_mode
 
         self.cov = make_spd_matrix(n_dim=2, random_state=500)
-        self.cov *= 10
+        self.cov *= 50
 
         # if human-rendering is used, self.window will be a reference to the window.
         # self.clock will be a clock used to ensure rendering at correct framerate.
@@ -51,20 +51,25 @@ class GridWorldEnv(gym.Env):
 
     # Get observations (to be used in reset() and step() )
     def _get_obs(self, current_location):
-        #costruire la matrice delle osservazioni con i valori di pdf 
-        #return {"agent": self._agent_location, "target": self._target_location}
-        obs_matrix = np.zeros((3,3))
-        pdfs = []
+        #obs_matrix = np.zeros((3,3))
+        #pdfs = []
 
-        for i in range(current_location[0]-1,current_location[0]+2):
-            for j in range(current_location[1]-1,current_location[1]+2):
-                pdfs.append(self.eval_pdf(self._target_location,np.array((i,j)),self.cov))
+        #for i in range(current_location[0]-1,current_location[0]+2):
+        #    for j in range(current_location[1]-1,current_location[1]+2):
+        #        pdfs.append(self.eval_pdf(self._target_location,np.array((i,j)),self.cov))
 
-        for i in range(0,3):
-            for j in range(0,3):
-                I = int(i*3+j)
-                obs_matrix[i,j] = pdfs[I]
+        #pdfs = pdfs - pdfs[4]
 
+        #for i in range(0,3):
+        #    for j in range(0,3):
+        #        I = int(i*3+j)
+        #        obs_matrix[i,j] = pdfs[I]
+
+        obs_matrix = np.zeros((self.size,self.size))
+        for i in range(0,self.size):
+            for j in range(0,self.size):
+                obs_matrix[i,j] = self.eval_pdf(self._target_location,np.array((i,j)),self.cov)
+        
         return obs_matrix
 
     # Similar for info returned by step and reset
@@ -95,13 +100,15 @@ class GridWorldEnv(gym.Env):
         if self.render_mode == "human":
             info = self._render_frame()
 
-        self.cov = make_spd_matrix(n_dim=2, random_state=500)
-        self.cov *= 10
+        #self.cov = make_spd_matrix(n_dim=2, random_state=500)
+        #self.cov *= 50
 
         return observation, info
 
 
     def step(self, action):
+
+        self.pdf_old = self.eval_pdf(self._target_location, self._agent_location, self.cov)
         # map the action to walk direction
         direction = self._action_to_direction[action]
 
@@ -113,7 +120,17 @@ class GridWorldEnv(gym.Env):
 
         # episode is done if the agent has reached the target
         terminated = np.array_equal(self._agent_location, self._target_location)
-        reward = 1 if terminated else self.pdf
+
+        if terminated:
+            reward = 10
+        else:
+            if self.pdf > self.pdf_old:
+                reward = 1
+            if self.pdf == self.pdf_old:
+                reward = 0
+            else:
+                reward = -1
+        
         observation = self._get_obs(self._agent_location)
         info = self._get_info()
 
