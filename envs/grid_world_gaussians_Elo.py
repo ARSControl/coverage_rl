@@ -1,24 +1,36 @@
 import numpy as np
 import pygame
-import scipy
 import gymnasium as gym
 from gymnasium import spaces
-from sklearn.datasets import make_spd_matrix
 
+def gauss_pdf(point, mean, covariance):
+
+    # Calculate the multivariate Gaussian probability
+    point = np.expand_dims(point, 0)
+    exponent = -0.5 * np.sum((point - mean) @ np.linalg.inv(covariance) * (point - mean), axis=1)
+    coefficient = 1 / np.sqrt((2 * np.pi) ** 2 * np.linalg.det(covariance))
+    prob = coefficient * np.exp(exponent)
+
+    return prob
 
 class GridWorldEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
-    
-    def __init__(self, render_mode=None, size=10):
+
+    def __init__(self, render_mode=None, size=5):
         self.size = size                # size of the square grid
         self.window_size = 512          # size of the pygame window
 
         # Observations are dictionaries with the agent's and the target's location.
         # Each location is encoded as an element of  {0, ..., `size`}^2, i.e. MultiDiscrete([size, size])
-        self.observation_space = spaces.Box(-1.0, 1.0, shape=(self.size,self.size), dtype= np.float64)
+        self.observation_space = spaces.Dict(
+             {
+                "agent": spaces.Box(0, size-1, shape=(2,), dtype=int),
+                "target": spaces.Box(0, size-1, shape=(2,), dtype=int),
+             }
+        )
 
         # we have 4 actions, corresponding to "right", "up", "left", "down"
-        self.action_space = spaces.Discrete(8)
+        self.action_space = spaces.Discrete(4)
 
         # The following dictionary maps abstract actions from self.action_space to the direction we will walk in if that action is taken.
         # i.e. 0 corresponds to "right", 1 to "up", ...
@@ -26,21 +38,13 @@ class GridWorldEnv(gym.Env):
             0: np.array([1, 0]),
             1: np.array([0, 1]),
             2: np.array([-1, 0]),
-            3: np.array([0, -1]),
-            #diagonals
-            4: np.array([1, 1]), #up right 
-            5: np.array([1, -1]), #down right
-            6: np.array([-1, -1]), #down left
-            7: np.array([-1, 1]) #up left
+            3: np.array([0, -1])
         }
 
-        self._action_to_direction = np.array([[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [1, -1], [-1, -1], [-1, 1] ])
+        self._action_to_direction = np.array([[1, 0], [0, 1], [-1, 0], [0, -1]])
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
-
-        self.cov = make_spd_matrix(n_dim=2, random_state=500)
-        self.cov *= 50
 
         # if human-rendering is used, self.window will be a reference to the window.
         # self.clock will be a clock used to ensure rendering at correct framerate.
@@ -48,29 +52,13 @@ class GridWorldEnv(gym.Env):
         self.window = None
         self.clock = None
 
+        sigma = 3
+        self.covariance = np.array([[sigma, 0], [0, sigma]])
+
 
     # Get observations (to be used in reset() and step() )
-    def _get_obs(self, current_location):
-        #obs_matrix = np.zeros((3,3))
-        #pdfs = []
-
-        #for i in range(current_location[0]-1,current_location[0]+2):
-        #    for j in range(current_location[1]-1,current_location[1]+2):
-        #        pdfs.append(self.eval_pdf(self._target_location,np.array((i,j)),self.cov))
-
-        #pdfs = pdfs - pdfs[4]
-
-        #for i in range(0,3):
-        #    for j in range(0,3):
-        #        I = int(i*3+j)
-        #        obs_matrix[i,j] = pdfs[I]
-
-        obs_matrix = np.zeros((self.size,self.size))
-        for i in range(0,self.size):
-            for j in range(0,self.size):
-                obs_matrix[i,j] = self.eval_pdf(self._target_location,np.array((i,j)),self.cov)
-        
-        return obs_matrix
+    def _get_obs(self):
+        return {"agent": self._agent_location, "target": self._target_location}
 
     # Similar for info returned by step and reset
     def _get_info(self):
@@ -78,9 +66,6 @@ class GridWorldEnv(gym.Env):
             "distance": np.linalg.norm(self._agent_location - self._target_location, ord=1)
         }
 
-    def eval_pdf(self, target, current_pos, cov):
-        pdf = scipy.stats.multivariate_normal.pdf(current_pos, target, cov)
-        return pdf
 
     def reset(self, seed=None, options=None):
         # Seed RNG
@@ -94,44 +79,44 @@ class GridWorldEnv(gym.Env):
         while np.array_equal(self._target_location, self._agent_location):
             self._target_location = self.np_random.integers(0, self.size, size=2, dtype=int)
         
-        observation = self._get_obs(self._agent_location)
+        self.old_pdf = gauss_pdf(self._agent_location,self._target_location,self.covariance)
+        
+        observation = self._get_obs()
         info = self._get_info()
 
         if self.render_mode == "human":
             info = self._render_frame()
 
-        #self.cov = make_spd_matrix(n_dim=2, random_state=500)
-        #self.cov *= 50
-
         return observation, info
 
 
     def step(self, action):
+        #calculate current pdf
+        self.old_pdf = gauss_pdf(self._agent_location,self._target_location,self.covariance)
 
-        self.pdf_old = self.eval_pdf(self._target_location, self._agent_location, self.cov)
         # map the action to walk direction
         direction = self._action_to_direction[action]
 
         # clip to be sure we don't leave the grid
         self._agent_location = np.clip(self._agent_location + direction, 0, self.size - 1)
 
-        #evaluate the pdf in the current agent position
-        self.pdf = self.eval_pdf(self._target_location, self._agent_location, self.cov)
+        #calculate pdf after the step
+        self.pdf = gauss_pdf(self._agent_location,self._target_location,self.covariance)
+
+        #reward depends on the difference
+        if self.old_pdf < self.pdf:
+            reward = 1
+        elif self.old_pdf > self.pdf:
+            reward = -1
+        else:
+            reward = 0
 
         # episode is done if the agent has reached the target
         terminated = np.array_equal(self._agent_location, self._target_location)
-
         if terminated:
-            reward = 10
-        else:
-            if self.pdf > self.pdf_old:
-                reward = 1
-            if self.pdf == self.pdf_old:
-                reward = 0
-            else:
-                reward = -1
-        
-        observation = self._get_obs(self._agent_location)
+            reward = 100
+
+        observation = self._get_obs()
         info = self._get_info()
 
         if self.render_mode == "human":
@@ -156,14 +141,15 @@ class GridWorldEnv(gym.Env):
             self.clock = pygame.time.Clock()
 
         canvas = pygame.Surface((self.window_size, self.window_size))
-        pix_square_size = (self.window_size / self.size)
+        canvas.fill((255, 255, 255))
+        pix_square_size = (self.window_size / self.size)        # size of a single grid square in pixels
 
-        #calculate max_value
+                #calculate max_value
         max_pdf = 0.00
         for i in range(0, self.size):
             for j in range(0, self.size):
                 point = np.array((i,j))
-                pdf = float(self.eval_pdf(self._target_location,point,self.cov))
+                pdf = gauss_pdf(point,self._target_location,self.covariance)
                 if pdf > max_pdf:
                     max_pdf = pdf
 
@@ -174,7 +160,10 @@ class GridWorldEnv(gym.Env):
                     (pix_square_size, pix_square_size),
                 )
                 eval_point = np.array((i,j))
-                pdf_value = float(self.eval_pdf(self._target_location,eval_point,self.cov))
+
+                #represent gaussian with colorful level curves
+
+                pdf_value = gauss_pdf(eval_point,self._target_location,self.covariance)
 
                 #normalizing 
                 pdf_value = float(pdf_value/max_pdf)
@@ -189,6 +178,7 @@ class GridWorldEnv(gym.Env):
                     canvas.fill((0, 255, 255),rect)
                 else:
                     canvas.fill((255, 255, 255),rect)
+
 
         # first draw the target
         pygame.draw.rect(
