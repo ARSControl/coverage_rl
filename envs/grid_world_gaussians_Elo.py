@@ -22,12 +22,17 @@ class GridWorldEnv(gym.Env):
 
         # Observations are dictionaries with the agent's and the target's location.
         # Each location is encoded as an element of  {0, ..., `size`}^2, i.e. MultiDiscrete([size, size])
-        self.observation_space = spaces.Dict(
-             {
-                "agent": spaces.Box(0, size-1, shape=(2,), dtype=int),
-                "target": spaces.Box(0, size-1, shape=(2,), dtype=int),
-             }
-        )
+        #self.observation_space = spaces.Dict(
+        #     {
+        #        "agent": spaces.Box(0, size-1, shape=(2,), dtype=int),
+        #        "target": spaces.Box(0, size-1, shape=(2,), dtype=int),
+        #     }
+        #)
+        self.observation_space = spaces.Box(low=-10, high=1,
+                    shape=(2, 2),
+                    dtype=np.float64)
+        self.sensing_range = 1
+
 
         # we have 4 actions, corresponding to "right", "up", "left", "down"
         self.action_space = spaces.Discrete(4)
@@ -52,16 +57,42 @@ class GridWorldEnv(gym.Env):
         self.window = None
         self.clock = None
 
-        sigma = 3
-        self.covariance = np.array([[sigma, 0], [0, sigma]])
+        sigmaxx = 5
+        sigmayy = 4
+        self.covariance = np.array([[sigmaxx, 0], [0, sigmayy]])
 
 
     # Get observations (to be used in reset() and step() )
     def _get_obs(self):
-        return {"agent": self._agent_location, "target": self._target_location}
+        x = self._agent_location[0]
+        y = self._agent_location[1]
+
+        xmin = x - self.sensing_range
+        xmax = x + self.sensing_range
+        ymin = y - self.sensing_range
+        ymax = y + self.sensing_range
+
+        obs = np.zeros((2,2))
+        if xmin >= 0 and xmax<self.size and ymax < self.size and ymin >= 0:
+            obs[0,0] = self.grid[x,ymin]
+            obs[0,1] = self.grid[xmax,y]
+            obs[1,0] = self.grid[x,ymax]
+            obs[1,1] = self.grid[xmin,y]
+        else:
+            if ymax >= self.size:
+                obs[1,0] = -10
+            if xmax >= self.size:
+                obs[0,1] = -10
+            if ymin < 0:
+                obs[0,0] = -10
+            if xmin < 0:
+                obs[1,1] = -10
+
+        return obs
 
     # Similar for info returned by step and reset
     def _get_info(self):
+        #return {"agent": self._agent_location, "target": self._target_location}
         return {
             "distance": np.linalg.norm(self._agent_location - self._target_location, ord=1)
         }
@@ -80,6 +111,13 @@ class GridWorldEnv(gym.Env):
             self._target_location = self.np_random.integers(0, self.size, size=2, dtype=int)
         
         self.old_pdf = gauss_pdf(self._agent_location,self._target_location,self.covariance)
+
+        self.grid = np.zeros((self.size, self.size))
+        for i in range(0, self.size):
+            for j in range(0, self.size):
+                self.grid[i, j] = gauss_pdf(np.array([i,j]), self._target_location, self.covariance)
+        #normalize values
+        self.grid /= self.grid.max()
         
         observation = self._get_obs()
         info = self._get_info()
@@ -144,29 +182,14 @@ class GridWorldEnv(gym.Env):
         canvas.fill((255, 255, 255))
         pix_square_size = (self.window_size / self.size)        # size of a single grid square in pixels
 
-                #calculate max_value
-        max_pdf = 0.00
-        for i in range(0, self.size):
-            for j in range(0, self.size):
-                point = np.array((i,j))
-                pdf = gauss_pdf(point,self._target_location,self.covariance)
-                if pdf > max_pdf:
-                    max_pdf = pdf
-
         for i in range(0,self.size):
             for j in range(0,self.size):
                 rect = pygame.Rect(
                     pix_square_size * np.array((i,j)),
                     (pix_square_size, pix_square_size),
                 )
-                eval_point = np.array((i,j))
-
                 #represent gaussian with colorful level curves
-
-                pdf_value = gauss_pdf(eval_point,self._target_location,self.covariance)
-
-                #normalizing 
-                pdf_value = float(pdf_value/max_pdf)
+                pdf_value = self.grid[i,j]
 
                 if pdf_value >= 0.8:
                     canvas.fill((255, 153, 51),rect)
