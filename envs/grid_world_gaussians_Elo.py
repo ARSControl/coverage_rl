@@ -29,25 +29,29 @@ class GridWorldEnv(gym.Env):
         #     }
         #)
         self.observation_space = spaces.Box(low=-10, high=1,
-                    shape=(2, 2),
+                    shape=(3, 3),
                     dtype=np.float64)
         self.sensing_range = 1
 
 
         # we have 4 actions, corresponding to "right", "up", "left", "down"
-        self.action_space = spaces.Discrete(4)
+        self.action_space = spaces.Discrete(9)
 
         # The following dictionary maps abstract actions from self.action_space to the direction we will walk in if that action is taken.
         # i.e. 0 corresponds to "right", 1 to "up", ...
         self._action_to_direction = {
-            0: np.array([1, 0]),
-            1: np.array([0, 1]),
-            2: np.array([-1, 0]),
-            3: np.array([0, -1]),
-            4: np.array([0, 0])
+            0: np.array([-1, 1]), #up left
+            1: np.array([0, 1]), #up
+            2: np.array([1, 1]), #up right
+            3: np.array([-1, 0]), #left
+            4: np.array([0, 0]), #still
+            5: np.array([1, 0]), #right
+            6: np.array([-1, -1]), #down left
+            7: np.array([0, -1]), #down
+            8: np.array([1, -1]) #down right
         }
 
-        self._action_to_direction = np.array([[1, 0], [0, 1], [-1, 0], [0, -1], [0, 0]])
+        self._action_to_direction = np.array([[-1, 1], [0, 1], [1, 1], [-1, 0], [0, 0], [1, 0], [-1, -1], [0, -1], [1, -1]])
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -73,29 +77,30 @@ class GridWorldEnv(gym.Env):
         ymin = y - self.sensing_range
         ymax = y + self.sensing_range
 
-        obs = np.zeros((2,2))
+        #adjust
+        obs = np.full((3,3),-10)
         if xmin >= 0 and xmax<self.size and ymax < self.size and ymin >= 0:
-            obs[0,0] = self.grid[xmax,y] #right
-            obs[0,1] = self.grid[x,ymin] #up
-            obs[1,0] = self.grid[xmin,y] #left
-            obs[1,1] = self.grid[x,ymax] #down
+            obs = self.grid[xmin:(xmax+1),ymin:(ymax+1)]
             
         else:
-            grid = np.ones((2,2))
+            rangemaxx= 3
+            rangemaxy = 3
+            rangeminx = 0
+            rangeminy = 0
             if ymax >= self.size:
-                grid[1,1] = -10
                 ymax -= 1
+                rangemaxy = 2
             if xmax >= self.size:
-                grid[0,0] = -10
                 xmax -= 1
+                rangemaxx = 2
             if ymin < 0:
-                grid[0,1] = -10
                 ymin += 1
+                rangeminy = 1
             if xmin < 0:
-                grid[1,0] = -10
                 xmin += 1
+                rangeminx = 1
 
-            obs = [[self.grid[xmax,y], self.grid[x,ymin]], [self.grid[xmin,y], self.grid[x,ymax]]]* grid 
+            obs[rangeminx:rangemaxx,rangeminy:rangemaxy] = self.grid[xmin:(xmax+1),ymin:(ymax+1)]
         return obs
 
     # Similar for info returned by step and reset
