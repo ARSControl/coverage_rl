@@ -43,10 +43,11 @@ class GridWorldEnv(gym.Env):
             0: np.array([1, 0]),
             1: np.array([0, 1]),
             2: np.array([-1, 0]),
-            3: np.array([0, -1])
+            3: np.array([0, -1]),
+            4: np.array([0, 0])
         }
 
-        self._action_to_direction = np.array([[1, 0], [0, 1], [-1, 0], [0, -1]])
+        self._action_to_direction = np.array([[1, 0], [0, 1], [-1, 0], [0, -1], [0, 0]])
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -74,20 +75,27 @@ class GridWorldEnv(gym.Env):
 
         obs = np.zeros((2,2))
         if xmin >= 0 and xmax<self.size and ymax < self.size and ymin >= 0:
-            obs[0,0] = self.grid[x,ymin]
-            obs[0,1] = self.grid[xmax,y]
-            obs[1,0] = self.grid[x,ymax]
-            obs[1,1] = self.grid[xmin,y]
+            obs[0,0] = self.grid[xmax,y] #right
+            obs[0,1] = self.grid[x,ymin] #up
+            obs[1,0] = self.grid[xmin,y] #left
+            obs[1,1] = self.grid[x,ymax] #down
+            
         else:
+            grid = np.ones((2,2))
             if ymax >= self.size:
-                obs[1,0] = -10
+                grid[1,1] = -10
+                ymax -= 1
             if xmax >= self.size:
-                obs[0,1] = -10
+                grid[0,0] = -10
+                xmax -= 1
             if ymin < 0:
-                obs[0,0] = -10
+                grid[0,1] = -10
+                ymin += 1
             if xmin < 0:
-                obs[1,1] = -10
+                grid[1,0] = -10
+                xmin += 1
 
+            obs = [[self.grid[xmax,y], self.grid[x,ymin]], [self.grid[xmin,y], self.grid[x,ymax]]]* grid 
         return obs
 
     # Similar for info returned by step and reset
