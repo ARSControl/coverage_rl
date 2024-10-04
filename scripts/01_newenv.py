@@ -20,8 +20,9 @@ import matplotlib.pyplot as plt
 # custom env
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
-from envs.grid_world import GridWorldEnv
+# from envs.grid_world import GridWorldEnv
 from envs.simple_env import SimpleEnv
+from envs.grid_world_gaussians_Elo import GridWorldEnv
 
 
 path = Path().resolve()
@@ -37,7 +38,7 @@ if TRAIN:
   # Create env
   num_envs = 4
   # env = LocalEnv()
-  env = make_vec_env(SimpleEnv, n_envs=num_envs)
+  env = make_vec_env(GridWorldEnv, n_envs=num_envs)
   # env = FlattenObservation(env)
   print("Environment: UniformEnv")
   print("Action space shape: ", env.action_space)
@@ -67,9 +68,9 @@ if TRAIN:
   # model = PPO.load(str(model_folder/"LocalEnv_DQN_15M"))
   # model.set_env(env)
   # print("Model:" , model)
-  total_timesteps = 3_000_000
+  total_timesteps = 1_000_000
   model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
-  model.save(str(model_folder/"SimpleEnv_obs_t_PPO_3M"))
+  model.save(str(model_folder/"Elo_PPO_1M"))
   env.close()
 
 
