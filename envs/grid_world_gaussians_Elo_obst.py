@@ -20,17 +20,15 @@ class GridWorldEnv(gym.Env):
         self.size = size                # size of the square grid
         self.window_size = 512          # size of the pygame window
 
-        # Observations are dictionaries with the agent's and the target's location.
-        # Each location is encoded as an element of  {0, ..., `size`}^2, i.e. MultiDiscrete([size, size])
-        #self.observation_space = spaces.Dict(
-        #     {
-        #        "agent": spaces.Box(0, size-1, shape=(2,), dtype=int),
-        #        "target": spaces.Box(0, size-1, shape=(2,), dtype=int),
-        #     }
-        #)
-        self.observation_space = spaces.Box(low=-10, high=1,
+        self.observation_space = spaces.Dict(
+            {
+                "sensing": spaces.Box(low=-10, high=1,
                     shape=(3, 3),
-                    dtype=np.float64)
+                    dtype=np.float64),
+                "obstacles": spaces.Box(low=0, high=1, shape=(3, 3), dtype=np.int8)
+            }
+        )
+
         self.sensing_range = 1
 
 
@@ -66,7 +64,6 @@ class GridWorldEnv(gym.Env):
         sigmayy = 4
         self.covariance = np.array([[sigmaxx, 0], [0, sigmayy]])
 
-
     # Get observations (to be used in reset() and step() )
     def _get_obs(self):
         x = self._agent_location[0]
@@ -79,13 +76,10 @@ class GridWorldEnv(gym.Env):
 
 
         obs = np.full((3,3),-10)
+        obs_obst = np.full((3,3),0)
         if xmin >= 0 and xmax<self.size and ymax < self.size and ymin >= 0:
             obs = self.grid[xmin:(xmax+1),ymin:(ymax+1)]
-            for i in range(3):
-                for j in range(3):
-                    for obstacle in self.obstacles:
-                        if np.array_equal(np.array((i,j)),obstacle):
-                            obs[i,j] = -10
+            obs_obst = self.grid_obst[xmin:(xmax+1),ymin:(ymax+1)]
             
         else:
             rangemaxx= 3
@@ -106,12 +100,10 @@ class GridWorldEnv(gym.Env):
                 rangeminx = 1
 
             obs[rangeminx:rangemaxx,rangeminy:rangemaxy] = self.grid[xmin:(xmax+1),ymin:(ymax+1)]
-            for i in range(rangeminx,rangemaxx):
-                for j in range(rangeminy,rangemaxy):
-                    for obstacle in self.obstacles:
-                        if np.array_equal(np.array((i,j)),obstacle):
-                            obs[i,j] = -10
-        return obs
+            obs_obst[rangeminx:rangemaxx,rangeminy:rangemaxy] = self.grid_obst[xmin:(xmax+1),ymin:(ymax+1)]
+        dict_obs = {"sensing": obs, "obstacles": obs_obst}
+
+        return dict_obs
 
     # Similar for info returned by step and reset
     def _get_info(self):
@@ -120,6 +112,8 @@ class GridWorldEnv(gym.Env):
             "distance": np.linalg.norm(self._agent_location - self._target_location, ord=1)
         }
 
+    def get_obstacles(self):
+        return self.obstacles
 
     def reset(self, seed=None, options=None):
         # Seed RNG
@@ -134,12 +128,9 @@ class GridWorldEnv(gym.Env):
             self._target_location = self.np_random.integers(0, self.size, size=2, dtype=int)
         
         #add obstacles
-        self.obstacles = []
-        while len(self.obstacles) < 3:
-            obstacle = self.np_random.integers(0, self.size, size=2, dtype=int)
-            if not np.array_equal(obstacle, self._agent_location) and not np.array_equal(obstacle,self._target_location):
-                self.obstacles.append(obstacle)
-        self.obstacles = np.array(self.obstacles)
+        self.obstacles = self.np_random.integers(0, self.size, size=(3,2), dtype=int)
+        while any(np.array_equal(obstacle, self._agent_location) for obstacle in self.obstacles) or any(np.array_equal(obstacle, self._target_location) for obstacle in self.obstacles):
+            self.obstacles = self.np_random.integers(0, self.size, size=(3,2), dtype=int)
 
         self.old_pdf = gauss_pdf(self._agent_location,self._target_location,self.covariance)
 
@@ -150,8 +141,11 @@ class GridWorldEnv(gym.Env):
         #normalize values
         self.grid /= self.grid.max()
 
-        for obstacle in self.obstacles:
-            self.grid[obstacle[0],obstacle[1]] = -10
+        self.grid_obst = np.zeros((self.size, self.size))
+        for obst in self.obstacles:
+            self.grid_obst[obst[0],obst[1]] = 1 
+        #normalize values
+        self.grid /= self.grid.max()
 
         observation = self._get_obs()
         info = self._get_info()
@@ -176,12 +170,15 @@ class GridWorldEnv(gym.Env):
         self.pdf = self.grid[self._agent_location[0], self._agent_location[1]]
 
         #reward depends on the difference
-        if self.old_pdf < self.pdf:
-            reward = 1
-        elif self.old_pdf > self.pdf:
-            reward = -1
+        if any(np.array_equal(obstacle,self._agent_location) for obstacle in self.obstacles):
+            reward = -10
         else:
-            reward = 0
+            if self.old_pdf < self.pdf:
+                reward = 1
+            elif self.old_pdf > self.pdf:
+                reward = -1
+            else:
+                reward = 0
 
         # episode is done if the agent has reached the target
         terminated = np.array_equal(self._agent_location, self._target_location)
@@ -256,13 +253,15 @@ class GridWorldEnv(gym.Env):
         )
 
         #draw the obstacles
-        for i in range(3):
-            pygame.draw.circle(
-                canvas,
-                (0, 0, 0),
-                (self.obstacles[i,:] + 0.5) * pix_square_size,
-                pix_square_size / 3,
-            )
+        for i in range(0,self.size):
+            for j in range(0,self.size):
+                if self.grid_obst[i,j] == 1:
+                    pygame.draw.circle(
+                        canvas,
+                        0,
+                        (np.array((i,j)) + 0.5) * pix_square_size,
+                        pix_square_size / 3,
+                    )
 
         # finally, add some grid lines
         for x in range(self.size + 1):
