@@ -17,7 +17,7 @@ from pathlib import Path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'envs'))
-from grid_world_gaussians_Elo_modified import GridWorldEnv
+from grid_world_gaussians_10 import GridWorldEnv
 
 
 path = Path().resolve()
@@ -31,7 +31,7 @@ env = GridWorldEnv(size=5)
 env = FlattenObservation(env)
 model = A2C("MlpPolicy", env, verbose=1)
 # observation, info = env.reset()
-total_timesteps = 3_000_000
+total_timesteps = 1_000_000
 model.learn(total_timesteps=total_timesteps)
 model.save(str(model_folder/"MultiEnv_A2C_Elo_test3"))
 env.close()
