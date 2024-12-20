@@ -76,7 +76,7 @@ class GridWorldEnv(gym.Env):
         ymax = min(self.size - 1, y + self.sensing_range)
 
         # Adjust the size of the observation window based on the sensing range
-        obs = np.full((2 * self.sensing_range + 1, 2 * self.sensing_range + 1), -10)
+        obs = np.full((2 * self.sensing_range + 1, 2 * self.sensing_range + 1), 0)
         obs_obst = np.full((2 * self.sensing_range + 1, 2 * self.sensing_range + 1), 0)
 
         # Calculate the valid ranges in the observation array (obs) and the grid (self.grid)
